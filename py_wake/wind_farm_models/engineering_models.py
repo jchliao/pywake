@@ -507,7 +507,7 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
             diff_ilk = cabs(WS_eff_ilk_last - WS_eff_ilk)
             max_diff = np.max(diff_ilk.max(0))
 
-            if max_diff < 1e-6:
+            if max_diff < self.convergence_tolerance:
                 break
             WS_eff_ilk_last = WS_eff_ilk
         self.direction = 'down'
