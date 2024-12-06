@@ -21,6 +21,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
+  "git-lfs",
   "matplotlib",
   "numpy",
   "xarray", "netcdf4", "h5netcdf",
