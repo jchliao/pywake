@@ -322,7 +322,7 @@ class WindFarmModel(ABC):
             else:  # pragma: no cover
                 raise ValueError(f'Shape, {s}, of argument {k} is invalid')
 
-        arg_lst = [{'wd': wd[wd_slice], 'ws': ws[ws_slice], 'time':get_subtask_arg('time', time, wd_slice, ws_slice),
+        arg_lst = [{'wd': wd[wd_slice], 'ws': ws[ws_slice], 'time': get_subtask_arg('time', time, wd_slice, ws_slice),
                     ** {k: get_subtask_arg(k, v, wd_slice, ws_slice) for k, v in kwargs.items()}} for wd_slice, ws_slice in slice_lst]
 
         return map_func, arg_lst, wd_chunks, ws_chunks
@@ -330,16 +330,21 @@ class WindFarmModel(ABC):
     def _aep_chunk_wrapper(self, aep_function,
                            x, y, h=None, type=0, wd=None, ws=None,   # @ReservedAssignment
                            normalize_probabilities=False, with_wake_loss=True,
-                           n_cpu=1, wd_chunks=None, ws_chunks=None, **kwargs):
+                           n_cpu=1, wd_chunks=None, ws_chunks=None, time=False, **kwargs):
         wd, ws = self.site.get_defaults(wd, ws)
         wd_bin_size = self.site.wd_bin_size(wd)
 
         map_func, kwargs_lst, wd_chunks, ws_chunks = self._multiprocessing_chunks(
-            wd=wd, ws=ws, time=False, n_cpu=n_cpu, wd_chunks=wd_chunks, ws_chunks=ws_chunks,
+            wd=wd, ws=ws, time=time, n_cpu=n_cpu, wd_chunks=wd_chunks, ws_chunks=ws_chunks,
             x=x, y=y, h=h, type=type, **kwargs)
 
-        return np.sum([np.array(aep) / self.site.wd_bin_size(args['wd']) * wd_bin_size
-                       for args, aep in zip(kwargs_lst, map_func(aep_function, kwargs_lst))], 0)
+        if time is False:
+            return np.sum([np.array(aep) / self.site.wd_bin_size(args['wd']) * wd_bin_size
+                           for args, aep in zip(kwargs_lst, map_func(aep_function, kwargs_lst))], 0)
+
+        return np.mean(
+            [np.array(aep) for aep in map_func(aep_function, kwargs_lst)], axis=0
+        )
 
     def aep_gradients(self, gradient_method=autograd, wrt_arg=['x', 'y'], gradient_method_kwargs={},
                       n_cpu=1, wd_chunks=None, ws_chunks=None, **kwargs):
@@ -506,13 +511,13 @@ class SimulationResult(xr.Dataset):
 
         if linear_power_segments:
             s = "The linear_power_segments method "
-            assert all([n in self for n in ['Weibull_A', 'Weibull_k', 'Sector_frequency']]),\
+            assert all([n in self for n in ['Weibull_A', 'Weibull_k', 'Sector_frequency']]), \
                 s + "requires a site with weibull information"
             assert normalize_probabilities is False, \
                 s + "cannot be combined with normalize_probabilities"
-            assert np.all(self.Power.isel(ws=0) == 0) and np.all(self.Power.isel(ws=-1) == 0),\
+            assert np.all(self.Power.isel(ws=0) == 0) and np.all(self.Power.isel(ws=-1) == 0), \
                 s + "requires first wind speed to have no power (just below cut-in)"
-            assert np.all(self.Power.isel(ws=-1) == 0),\
+            assert np.all(self.Power.isel(ws=-1) == 0), \
                 s + "requires last wind speed to have no power (just above cut-out)"
             weighted_power = weibull.WeightedPower(
                 self.ws.values,
