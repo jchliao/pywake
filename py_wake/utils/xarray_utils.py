@@ -147,7 +147,7 @@ class interp_ilk():
 
         for i, d in enumerate(['i', l_name, 'ws']):
             if d not in ip_data_dims:
-                ip_data = np.expand_dims(ip_data, i)
+                ip_data = np.expand_dims(np.asarray(ip_data), i)
         return ip_data
 
 
