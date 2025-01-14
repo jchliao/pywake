@@ -156,8 +156,8 @@ def test_iea37_distances():
                                      (10, 0),
                                      (10, 20)
                                      ])
-@pytest.mark.parametrize('method,angle_func', [('wd', lambda a:0),
-                                               ('WD_i', lambda a:-a)
+@pytest.mark.parametrize('method,angle_func', [('wd', lambda a: 0),
+                                               ('WD_i', lambda a: -a)
                                                ])
 def test_straightDistance_turning(wfm_cls, turning, method, angle_func):
 

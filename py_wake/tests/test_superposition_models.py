@@ -2,7 +2,7 @@ import pytest
 from py_wake import np
 from py_wake import NOJ
 from py_wake.site._site import UniformSite
-from py_wake.superposition_models import LinearSum, SquaredSum, MaxSum, SqrMaxSum, WeightedSum, CumulativeWakeSum,\
+from py_wake.superposition_models import LinearSum, SquaredSum, MaxSum, SqrMaxSum, WeightedSum, CumulativeWakeSum, \
     SuperpositionModel
 from py_wake.tests import npt
 from py_wake.wind_farm_models.engineering_models import PropagateDownwind, All2AllIterative
