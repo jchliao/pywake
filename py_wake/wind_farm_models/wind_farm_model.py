@@ -6,6 +6,7 @@ from py_wake.flow_map import FlowMap, HorizontalGrid, FlowBox, Grid
 import xarray as xr
 from py_wake.utils import xarray_utils, weibull  # register ilk function @UnusedImport
 from numpy import newaxis as na
+from numpy import atleast_1d
 from py_wake.utils.model_utils import check_model, fix_shape
 import multiprocessing
 from py_wake.utils.parallelization import get_pool_map, get_pool_starmap
@@ -55,7 +56,7 @@ class WindFarmModel(ABC):
     def _run(self, x, y, h=None, type=0, wd=None, ws=None, time=False, verbose=False,  # @ReservedAssignment
              n_cpu=1, wd_chunks=None, ws_chunks=1, **kwargs):
         if time is False and np.ndim(wd):
-            wd = np.sort(wd)
+            wd = np.sort(np.array(wd))
         assert len(x) == len(y)
         self.verbose = verbose
         h, _ = self.windTurbines.get_defaults(len(x), type, h)
@@ -387,7 +388,7 @@ class WindFarmModel(ABC):
                 n_cpu=n_cpu, wd_chunks=wd_chunks, ws_chunks=ws_chunks, **kwargs)
 
         if kwargs:
-            wrt_arg = np.atleast_1d(wrt_arg)
+            wrt_arg = atleast_1d(wrt_arg)
 
             def wrap_aep(*args, **kwargs):
                 kwargs.update({n: v for n, v in zip(wrt_arg, args)})
@@ -396,7 +397,7 @@ class WindFarmModel(ABC):
             f = gradient_method(wrap_aep, True, tuple(range(len(wrt_arg))), **gradient_method_kwargs)
             return np.array(f(*[kwargs.pop(n) for n in wrt_arg], **kwargs))
         else:
-            argnum = [['x', 'y', 'h', 'type', 'wd', 'ws'].index(a) for a in np.atleast_1d(wrt_arg)]
+            argnum = [['x', 'y', 'h', 'type', 'wd', 'ws'].index(a) for a in atleast_1d(wrt_arg)]
             f = gradient_method(self.aep, True, argnum, **gradient_method_kwargs)
             return f
 
@@ -423,7 +424,7 @@ class SimulationResult(xr.Dataset):
         if 'time' in lw:
             coords['time'] = ('time', lw.time)
 
-        ilk_dims = np.array((['wt', 'wd', 'ws'], ['wt', 'time'])['time' in lw], dtype=np.str_)
+        ilk_dims = (['wt', 'wd', 'ws'], ['wt', 'time'])['time' in lw]
         data_vars = {k: (ilk_dims, (v, v[:, :, 0])['time' in lw], {'Description': d})
                      for k, v, d in [('WS_eff', WS_eff_ilk, 'Effective local wind speed [m/s]'),
                                      ('TI_eff', np.zeros_like(WS_eff_ilk) + TI_eff_ilk,

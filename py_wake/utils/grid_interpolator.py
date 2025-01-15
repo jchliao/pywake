@@ -1,5 +1,6 @@
 from py_wake import np
 from numpy import newaxis as na
+from numpy import atleast_1d
 from py_wake.utils import gradients
 from autograd.numpy.numpy_boxes import ArrayBox
 
@@ -58,8 +59,8 @@ class GridInterpolator(object):
         """
         if len(np.atleast_1d(xp)) == 0:
             return np.array([])
-        method = np.atleast_1d(method or self.method)
-        assert np.all([m in ['linear', 'nearest'] for m in method]), 'method must be "linear" or "nearest"'
+        method = atleast_1d(method or self.method)
+        assert all([m in ['linear', 'nearest'] for m in method]), 'method must be "linear" or "nearest"'
         assert len(method) in [1, len(self.x)]
         linear = [method[min(len(method) - 1, i)] == 'linear' for i in range(len(self.x))]
         bounds = bounds or self.bounds

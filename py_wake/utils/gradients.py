@@ -165,9 +165,9 @@ def autograd(f, vector_interdependence=True, argnum=0):
             args, kwargs = kwargs2args(f, *args, **kwargs)
             wrt_args = [args[i] for i in argnum]
             args = [a for i, a in enumerate(args) if i not in argnum]
-            wrt_arg_shape = [np.shape(arg) for arg in wrt_args]
-            wrt_1arg = np.concatenate([np.ravel(a) for a in wrt_args])
-            wrt_arg_i = np.r_[0, np.cumsum([np.prod(s) for s in wrt_arg_shape]).astype(int)]
+            wrt_arg_shape = [numpy.shape(arg) for arg in wrt_args]
+            wrt_1arg = numpy.concatenate([numpy.ravel(a) for a in wrt_args])
+            wrt_arg_i = numpy.r_[0, numpy.cumsum([numpy.prod(s) for s in wrt_arg_shape]).astype(int)]
 
             def wrap_1inp(inp, *args):
                 wrt_args = [inp[i0:i1].reshape(s) for i0, i1, s in zip(wrt_arg_i[:-1], wrt_arg_i[1:], wrt_arg_shape)]
