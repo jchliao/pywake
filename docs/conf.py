@@ -16,6 +16,7 @@ from py_wake import __release__
 from py_wake import __version__
 import os
 import sys
+from pathlib import Path
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.append(r"c:\Anaconda3\envs\py36\Library\bin")
 
@@ -127,7 +128,7 @@ nbsphinx_timeout = 180
 
 # This is processed by Jinja2 and inserted before each notebook
 nbsphinx_prolog = r"""
-{% set docname = 'docs' / env.doc2path(env.docname, base=None) %}
+{% set docname = Path('docs') / env.doc2path(env.docname, base=None) %}
 
 
 .. only:: html
