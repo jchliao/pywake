@@ -127,8 +127,9 @@ nbsphinx_timeout = 180
 #nbsphinx_responsive_width = '700px'
 
 # This is processed by Jinja2 and inserted before each notebook
+
 nbsphinx_prolog = r"""
-{% set docname = Path('docs') / env.doc2path(env.docname, base=None) %}
+{% set docname = 'docs/' + env.doc2path(env.docname, base=None) %}
 
 
 .. only:: html
