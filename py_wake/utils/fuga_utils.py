@@ -131,18 +131,18 @@ After that pass the new netcdf file to Fuga instead of the old folder""", Deprec
 
     def zeta0_factor(self):
         invL = self.zeta0 / self.z0
-        ams = -5
+        ams = 5
 
         def psim(zeta):
             if self.zeta0 >= 0:
-                return ams * zeta
+                return -ams * zeta
             else:
                 # See Colonel.u2b.psim
                 amu = -19.3
                 aux2 = np.sqrt(1 + amu * zeta)
                 aux = np.sqrt(aux2)
                 return np.pi / 2 - 2 * np.arctan(aux) + np.log((1 + aux)**2 * (1 + aux2) / 8)
-        return 1 / (1 - (psim(self.zHub * invL) - psim(self.zeta0)) / np.log(self.zHub / self.z0))
+        return (1 - (psim(self.zHub * invL) - psim(self.zeta0)) / np.log(self.zHub / self.z0))
 
     def init_lut(self, lut, smooth2zero_x=None, smooth2zero_y=None, remove_wriggles=False):
         """initialize lut (negate, remove wriggles and smooth edges to zero)
