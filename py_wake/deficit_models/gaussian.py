@@ -153,8 +153,10 @@ class NiayifarGaussianDeficit(BastankhahGaussianDeficit):
         self.ct2a = ct2a
 
     def k_ilk(self, **kwargs):
-        TI_ref_ilk = kwargs[self.TI_key]
-        k_ilk = self.a[0] * TI_ref_ilk + self.a[1]
+        k_ilk = np.reshape(self.a[1], (1, 1, 1))
+        if self.a[0] != 0:
+            TI_ref_ilk = kwargs[self.TI_key]
+            k_ilk = k_ilk + self.a[0] * TI_ref_ilk
         return k_ilk
 
 
