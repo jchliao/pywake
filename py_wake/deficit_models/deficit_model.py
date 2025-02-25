@@ -6,6 +6,7 @@ from py_wake.utils.model_utils import method_args, RotorAvgAndGroundModelContain
 from py_wake.superposition_models import WeightedSum
 from py_wake.utils.grid_interpolator import GridInterpolator
 import inspect
+from py_wake.utils import gradients
 
 
 class DeficitModel(ABC, RotorAvgAndGroundModelContainer):
@@ -113,7 +114,9 @@ class BlockageDeficitModel(DeficitModel):
         if induc_ijlk is not None:
             # Close to the rotor the induced velocities become unphysical in some models and are
             # limited to the induction in the rotor plane estimated by BEM.
-            deficit_ijlk = np.where(np.abs(deficit_ijlk) > induc_ijlk, induc_ijlk * np.sign(deficit_ijlk), deficit_ijlk)
+            deficit_ijlk = np.where(np.abs(deficit_ijlk) > induc_ijlk,
+                                    induc_ijlk * gradients.sign(deficit_ijlk),
+                                    deficit_ijlk)
         return deficit_ijlk
 
 
