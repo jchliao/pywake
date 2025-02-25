@@ -731,3 +731,50 @@ def test_gradients():
         ddx_lst = [grad(t, vector_interdependence=False)(x) for grad in [fd, cs, autograd]]
         npt.assert_allclose(ddx_lst[0], ddx_lst[1], rtol=1e-4)
         npt.assert_allclose(ddx_lst[1], ddx_lst[2])
+
+
+def test_non_uniform_ts_xrsite_compute_local_wind_without_ref_ws_wd_inputs():
+    site_x = np.arange(0, 1000, 100)
+    site_y = np.arange(0, 2000, 100)
+    site_time = np.arange(100)
+    site_ws = np.random.uniform(3.0, 21.0, (len(site_x), len(site_y), len(site_time)))
+    site_wd = np.random.uniform(0.0, 360.0, (len(site_x), len(site_y), len(site_time)))
+    non_uniform_ts_site = XRSite(
+        xr.Dataset(
+            data_vars=dict(
+                WS=(["x", "y", "time"], site_ws),
+                WD=(["x", "y", "time"], site_wd),
+                TI=(["x", "y", "time"], np.ones_like(site_ws) * 0.1),
+                P=1,
+            ),
+            coords=dict(
+                x=("x", site_x),
+                y=("y", site_y),
+                time=("time", site_time),
+            ),
+        )
+    )
+
+    # test local wind compute without ref ws and wd inputs
+    ws0 = non_uniform_ts_site.local_wind(
+        site_x[1],
+        site_y[2],
+        time=[3],
+    )["WS_ilk"]
+    assert ws0 == site_ws[1, 2, 3]
+
+    # try wfm call with the site and no ref ws & wd
+    wts = V80()
+    wf_model = PropagateDownwind(
+        non_uniform_ts_site,
+        wts,
+        wake_deficitModel=BastankhahGaussianDeficit(),
+        superpositionModel=LinearSum(),
+    )
+    aep = (
+        wf_model([site_x[1], site_x[2]], [site_y[1], site_y[2]], time=site_time)
+        .aep()
+        .sum()
+        .values
+    )
+    assert aep > 0.0
