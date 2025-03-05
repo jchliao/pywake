@@ -175,8 +175,26 @@ class FugaMultiLUTDeficit(XRLUTDeficitModel):
         return output_ijlk
 
 
-FugaYawDeficit = FugaMultiLUTDeficit
-FugaDeficit = FugaMultiLUTDeficit
+class FugaYawDeficit(FugaMultiLUTDeficit):
+    def __init__(self, LUT_path=tfp + 'fuga/2MW/Z0=0.00408599Zi=00400Zeta0=0.00E+00.nc',
+                 z_lst=None, TI_ref_height=None, bounds='limit',
+                 smooth2zero_x=None, smooth2zero_y=None, remove_wriggles=False,
+                 rotorAvgModel=None, groundModel=None,
+                 use_effective_ti=False):
+        FugaMultiLUTDeficit.__init__(self, LUT_path=LUT_path, z_lst=z_lst, TI_ref_height=TI_ref_height, bounds=bounds,
+                                     smooth2zero_x=smooth2zero_x, smooth2zero_y=smooth2zero_y, remove_wriggles=remove_wriggles,
+                                     rotorAvgModel=rotorAvgModel, groundModel=groundModel, use_effective_ti=use_effective_ti)
+
+
+class FugaDeficit(FugaMultiLUTDeficit):
+    def __init__(self, LUT_path=tfp + 'fuga/2MW/Z0=0.03000000Zi=00401Zeta0=0.00E+00.nc',
+                 z_lst=None, TI_ref_height=None, bounds='limit',
+                 smooth2zero_x=None, smooth2zero_y=None, remove_wriggles=False,
+                 rotorAvgModel=None, groundModel=None,
+                 use_effective_ti=False):
+        FugaMultiLUTDeficit.__init__(self, LUT_path=LUT_path, z_lst=z_lst, TI_ref_height=TI_ref_height, bounds=bounds,
+                                     smooth2zero_x=smooth2zero_x, smooth2zero_y=smooth2zero_y, remove_wriggles=remove_wriggles,
+                                     rotorAvgModel=rotorAvgModel, groundModel=groundModel, use_effective_ti=use_effective_ti)
 
 
 def main():
