@@ -18,7 +18,9 @@ from py_wake.wind_turbines._wind_turbines import WindTurbine, WindTurbines
 from py_wake.utils.profiling import timeit
 import warnings
 from py_wake.utils import fuga_utils
-from py_wake.utils.fuga_utils import FugaXRLUT, FugaUtils
+from py_wake.utils.fuga_utils import FugaUtils
+from numpy import newaxis as na
+from scipy.optimize._minpack_py import curve_fit
 
 
 def test_fuga():
@@ -468,6 +470,46 @@ def test_verify_FugaMultiLUT():
             plt.show()
         npt.assert_array_almost_equal(fm.WS_eff.sel(time=t).squeeze(), fm_ref.WS_eff.squeeze(), 5)
 
+
+@pytest.mark.parametrize('yaw', [0, 30, 60])
+def test_fuga_wake_radius(yaw):
+    wts = HornsrevV80()
+
+    path = tfp + 'fuga/2MW/Z0=0.00408599Zi=00400Zeta0=0.00E+00.nc'
+    site = UniformSite()
+    wfm = Fuga(path, site, wts)
+    sim_res = wfm([0], [0], wd=270, ws=10, yaw=yaw)
+
+    y = np.linspace(-300, 300, 500)
+    du = 10 - sim_res.flow_map(XYGrid(x=500, y=y)).WS_eff.squeeze()
+    wake_radius = wfm.wake_deficitModel.wake_radius(dw_ijlk=np.array([500])[na, :, na, na], D_src_il=wts.diameter([0])[:, na],
+                                                    h_ilk=wts.hub_height([0])[:, na, na],
+                                                    TI_ilk=np.array([0.1])[:, na, na]).squeeze()
+
+    def gauss(x, *p):
+        A, mu, sigma = p
+        return A * np.exp(-(x - mu)**2 / (2. * sigma**2))
+
+    # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
+    coeff, var_matrix = curve_fit(gauss, y, du, p0=[1, 0, 1])
+    A, mu, sigma = coeff
+    if 0:
+        x = np.linspace(-200, 1200)
+        sim_res.flow_map(XYGrid(x=x)).plot_wake_map()
+        wake_radius_map = wfm.wake_deficitModel.wake_radius(dw_ijlk=x[na, :, na, na], D_src_il=wts.diameter([0])[:, na],
+                                                            h_ilk=wts.hub_height([0])[:, na, na],
+                                                            TI_ilk=np.array([0.1])[:, na, na]).squeeze()
+        plt.plot(x, wake_radius_map)
+        plt.figure()
+        plt.plot(y, du, label='Fuga')
+        plt.axvline(wake_radius, label='wake radius')
+        plt.plot(y, gauss(y, *coeff), label=f'Gauss({coeff})')
+        plt.axvline(sigma * 2, ls='--', color='r', label='2*sigma')
+        plt.legend()
+        plt.show()
+    npt.assert_allclose(sigma * 2, wake_radius, rtol=0.02)
+
+    plt.show()
 
 # def cmp_fuga_with_colonel():
 #     from py_wake.aep_calculator import AEPCalculator

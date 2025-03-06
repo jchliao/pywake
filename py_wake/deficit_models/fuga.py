@@ -19,7 +19,7 @@ import os
 class Fuga(PropagateDownwind, DeprecatedModel):
     def __init__(self, LUT_path, site, windTurbines,
                  rotorAvgModel=None, deflectionModel=None, turbulenceModel=None,
-                 smooth2zero_x=None, smooth2zero_y=None, remove_wriggles=False):
+                 bounds='limit', smooth2zero_x=None, smooth2zero_y=None, remove_wriggles=False):
         """
         Parameters
         ----------
@@ -39,7 +39,7 @@ class Fuga(PropagateDownwind, DeprecatedModel):
             Model describing the amount of added turbulence in the wake
         """
         PropagateDownwind.__init__(self, site, windTurbines,
-                                   wake_deficitModel=FugaDeficit(LUT_path,
+                                   wake_deficitModel=FugaDeficit(LUT_path, bounds=bounds,
                                                                  smooth2zero_x=smooth2zero_x,
                                                                  smooth2zero_y=smooth2zero_y,
                                                                  remove_wriggles=remove_wriggles),
@@ -50,7 +50,7 @@ class Fuga(PropagateDownwind, DeprecatedModel):
 
 class FugaBlockage(All2AllIterative, DeprecatedModel):
     def __init__(self, LUT_path, site, windTurbines, rotorAvgModel=None,
-                 deflectionModel=None, turbulenceModel=None, convergence_tolerance=1e-6, remove_wriggles=False):
+                 deflectionModel=None, turbulenceModel=None, convergence_tolerance=1e-6, bounds='limit', remove_wriggles=False):
         """
         Parameters
         ----------
@@ -69,7 +69,7 @@ class FugaBlockage(All2AllIterative, DeprecatedModel):
         turbulenceModel : TurbulenceModel
             Model describing the amount of added turbulence in the wake
         """
-        fuga_deficit = FugaDeficit(LUT_path, remove_wriggles=remove_wriggles)
+        fuga_deficit = FugaDeficit(LUT_path, bounds=bounds, remove_wriggles=remove_wriggles)
         All2AllIterative.__init__(self, site, windTurbines, wake_deficitModel=fuga_deficit,
                                   rotorAvgModel=rotorAvgModel, superpositionModel=LinearSum(),
                                   deflectionModel=deflectionModel, blockage_deficitModel=fuga_deficit,
@@ -135,9 +135,33 @@ class FugaMultiLUTDeficit(XRLUTDeficitModel):
         dims = ['d_h', 'zeta0', 'zi', 'z0']
         return dims
 
-    def wake_radius(self, D_src_il, dw_ijlk, **_):
-        # Set at twice the source radius for now
-        return np.zeros_like(dw_ijlk) + D_src_il[:, na, :, na]
+    def wake_radius(self, dw_ijlk, D_src_il, h_ilk, TI_ilk, hcw_ijlk=None, z_ijlk=None, **kwargs):
+        z_ijlk = h_ilk[:, na]
+        lim = self.da.y.max().item()
+
+        def get_mdu(hcw_ijlk):
+            hcw_ijlk = np.nan_to_num(np.clip(hcw_ijlk, -lim, lim), nan=lim)
+            return self._calc_mdu(D_src_il=D_src_il, dw_ijlk=dw_ijlk,
+                                  hcw_ijlk=hcw_ijlk, h_ilk=h_ilk, z_ijlk=z_ijlk, TI_ilk=TI_ilk, **kwargs)
+        mdu_target = get_mdu(dw_ijlk * 0) * np.exp(-2)  # corresponding to 2 sigma
+
+        def get_err(hcw):
+            return get_mdu(hcw) - mdu_target
+
+        def get_wake_radius(wake_radius_ijlk):
+            # Newton Raphson
+            for _ in range(4):
+                err = get_err(wake_radius_ijlk)
+                derr = get_err(wake_radius_ijlk + 1) - err
+                wake_radius_ijlk = wake_radius_ijlk - err / derr
+            return np.abs(wake_radius_ijlk)
+        wake_radius_ijlk = get_wake_radius(D_src_il[:, na, :, na])  # diameter as initial guess
+
+        if np.any(kwargs.get('yaw_ilk', [0])) and 'UT' in self.da.variable_names:
+            # mean of positive and negative side
+            wake_radius_ijlk = (wake_radius_ijlk + get_wake_radius(-D_src_il[:, na, :, na]))
+
+        return wake_radius_ijlk
 
     def calc_deficit(self, WS_ilk, WS_eff_ilk, dw_ijlk, hcw_ijlk, z_ijlk, ct_ilk, D_src_il, **kwargs):
         # bypass XRLUTDeficitModel.calc_deficit
@@ -145,19 +169,24 @@ class FugaMultiLUTDeficit(XRLUTDeficitModel):
             self._calc_layout_terms(dw_ijlk=dw_ijlk, hcw_ijlk=hcw_ijlk, z_ijlk=z_ijlk, D_src_il=D_src_il, **kwargs)
         return self.mdu_ijlk * (ct_ilk * WS_eff_ilk**2 / WS_ilk)[:, na]
 
-    def _calc_layout_terms(self, **kwargs):
+    def _calc_mdu(self, **kwargs):
         # 0 = UL
         variables0 = np.reshape(0, np.ones_like(kwargs['dw_ijlk'].shape).astype(int))
-        self.mdu_ijlk = XRLUTDeficitModel.calc_deficit(self, **kwargs, variables=variables0)
+        mdu_ijlk = XRLUTDeficitModel.calc_deficit(self, **kwargs, variables=variables0)
         if 'yaw_ilk' in kwargs:
             theta_yaw_ijlk = gradients.deg2rad(kwargs['yaw_ilk'])[:, na]
             if list(self.da.variable_names) == ['UL', 'UT']:
                 # 1 = UT
                 mdUT_ijlk = XRLUTDeficitModel.calc_deficit(self, **kwargs, variables=variables0 + 1)
                 mdUT_ijlk = np.negative(mdUT_ijlk, out=mdUT_ijlk, where=kwargs['hcw_ijlk'] >= 0)
-                self.mdu_ijlk = self.mdu_ijlk * np.cos(theta_yaw_ijlk) + np.sin(theta_yaw_ijlk) * mdUT_ijlk
+                mdu_ijlk = mdu_ijlk * np.cos(theta_yaw_ijlk) + np.sin(theta_yaw_ijlk) * mdUT_ijlk
             else:
-                self.mdu_ijlk *= np.cos(theta_yaw_ijlk)
+                mdu_ijlk *= np.cos(theta_yaw_ijlk)
+        return mdu_ijlk
+
+    def _calc_layout_terms(self, **kwargs):
+        self.mdu_ijlk = self._calc_mdu(**kwargs)
+        return self.mdu_ijlk
 
     def get_input(self, D_src_il, TI_ilk, h_ilk, dw_ijlk, hcw_ijlk, z_ijlk, **kwargs):
         user = {'zeta0': lambda: kwargs['zeta0_ilk'][:, na],
