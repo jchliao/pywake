@@ -146,7 +146,7 @@ class Site(ABC):
             ws = np.atleast_1d(ws)
         return wd, ws
 
-    def local_wind(self, x, y, h=None, wd=None, ws=None, time=False, wd_bin_size=None, ws_bins=None, **_):
+    def local_wind(self, x=None, y=None, h=None, wd=None, ws=None, time=False, wd_bin_size=None, ws_bins=None, **_):
         """Local free flow wind conditions
 
         Parameters

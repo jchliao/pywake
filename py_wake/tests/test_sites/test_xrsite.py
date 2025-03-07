@@ -276,27 +276,25 @@ def test_GlobalWindAtlasSite():
     lat, long = 55.52972, 7.906111  # hornsrev
 
     try:
-        site = GlobalWindAtlasSite(lat, long, height=70, roughness=0.001, ti=0.075)
+        site = GlobalWindAtlasSite(lat, long, roughness=0.001, ti=0.075)
     except (HTTPError, URLError):
         pytest.xfail('HTTPError in GlobalWindAtlasSite')
-    ref_mean = weibull.mean(ref.ds.Weibull_A, ref.ds.Weibull_k)
-    gwa_mean = weibull.mean(site.ds.Weibull_A, site.ds.Weibull_k)
+
+    def mean(lw):
+        return (lw['P_ilk'] / lw['P_ilk'].sum((0, 2))[na, :, na] * lw['WS_ilk']).sum((0, 2))
 
     if 0:
         plt.figure()
-        plt.plot(ref.ds.wd, ref_mean, label='HornsrevSite')
-        plt.plot(site.ds.wd, gwa_mean, label='HornsrevSite')
-        for r in [0, 1.5]:
-            for h in [10, 200]:
-                A, k = [site.gwc_ds[v].sel(roughness=r, height=h) for v in ['Weibull_A', 'Weibull_k']]
-                plt.plot(site.gwc_ds.wd, weibull.mean(A, k), label=f'{h}, {r}')
+        plt.plot(site.default_wd, mean(ref.local_wind()), label='HornsrevSite')
+        plt.plot(site.default_wd, mean(site.local_wind(h=70)), label='GWA Hornsrev h=70')
+        plt.plot(site.default_wd, mean(site.local_wind(h=100)), label='GWA Hornsrev h=100')
         plt.legend()
 
         plt.show()
 
-    npt.assert_allclose(gwa_mean, ref_mean, atol=1.4)
+    npt.assert_allclose(mean(site.local_wind(h=70)), mean(ref.local_wind()), atol=1.5)
     for var, atol in [('Sector_frequency', 0.03), ('Weibull_A', 1.6), ('Weibull_k', 0.4)]:
-        npt.assert_allclose(site.ds[var], ref.ds[var], atol=atol)
+        npt.assert_allclose(site.ds.interp(h=70)[var], ref.ds[var], atol=atol)
 
 
 def test_wrong_height():
