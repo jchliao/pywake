@@ -161,7 +161,7 @@ pypi_linux:
     - pip install --upgrade pip
     - pip install -e . --upgrade
     - pip install --upgrade build
-    - pip install --upgrade twine
+    - pip install --upgrade twine packaging
     - python3 -m build
     - twine upload dist/* -u $TWINE_USERNAME -p $TWINE_PASSWORD
   tags:
