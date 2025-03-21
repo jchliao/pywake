@@ -11,7 +11,10 @@ from py_wake.utils.gradients import cabs
 
 from py_wake.utils.model_utils import DeprecatedModel
 import glob
-from xarray.core.merge import merge_attrs
+try:
+    from xarray.core.merge import merge_attrs
+except ModuleNotFoundError:  # pragma: no cover
+    from xarray.structure.merge import merge_attrs  # Moved to xarray.structure in v2025.03.0
 import warnings
 import os
 

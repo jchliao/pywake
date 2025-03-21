@@ -364,7 +364,7 @@ def test_time_series_dates():
     d = np.load(os.path.dirname(examples.__file__) + "/data/time_series.npz")
     wd, ws, ws_std = [d[k][:6 * 24] for k in ['wd', 'ws', 'ws_std']]
     ti = np.minimum(ws_std / ws, .5)
-    t = pd.date_range("2000-01-01", freq="10T", periods=24 * 6)
+    t = pd.date_range("2000-01-01", freq="10min", periods=24 * 6)
     wt = V80()
     site = Hornsrev1Site()
     site.ds['TI'] = xr.DataArray(ti, [('time', t)])
@@ -380,7 +380,7 @@ def test_time_series_dates():
 def test_time_series_override_WS():
     d = np.load(os.path.dirname(examples.__file__) + "/data/time_series.npz")
     wd, ws = [d[k][:6 * 24] for k in ['wd', 'ws']]
-    t = pd.date_range("2000-01-01", freq="10T", periods=24 * 6)
+    t = pd.date_range("2000-01-01", freq="10min", periods=24 * 6)
     WS_it = (np.arange(80) / 100)[:, na] + ws[na]
     wt = V80()
     site = Hornsrev1Site()
@@ -395,7 +395,7 @@ def test_time_series_override_WS():
 def test_time_series_override_WD():
     d = np.load(os.path.dirname(examples.__file__) + "/data/time_series.npz")
     wd, ws = [d[k][:6 * 24] for k in ['wd', 'ws']]
-    t = pd.date_range("2000-01-01", freq="10T", periods=24 * 6)
+    t = pd.date_range("2000-01-01", freq="10min", periods=24 * 6)
     WD_it = (np.arange(80) / 100)[:, na] + wd[na]
     wt = V80()
     site = Hornsrev1Site()
@@ -412,7 +412,7 @@ def test_time_series_override_TI():
     d = np.load(os.path.dirname(examples.__file__) + "/data/time_series.npz")
     wd, ws, ws_std = [d[k][:6 * 24] for k in ['wd', 'ws', 'ws_std']]
     ti = np.minimum(ws_std / ws, .5)
-    t = pd.date_range("2000-01-01", freq="10T", periods=24 * 6)
+    t = pd.date_range("2000-01-01", freq="10min", periods=24 * 6)
     wt = V80()
     site = Hornsrev1Site()
     x, y = site.initial_position.T

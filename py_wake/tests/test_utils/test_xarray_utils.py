@@ -33,7 +33,7 @@ def test_add_ilk(ti, dims):
 def test_add_ilk_time(ti, dims):
     site = Hornsrev1Site()
     wt, wd, ws = np.arange(2), np.arange(100), np.arange(100) % 20 + 3
-    t = pd.date_range("2000-01-01", freq="10T", periods=100)
+    t = pd.date_range("2000-01-01", freq="10min", periods=100)
 
     lw = site.local_wind(wt * 1000, wt * 0, wt * 0 + 70, wd, ws, time=t)
     lw.add_ilk('TI_ilk', ti)
@@ -65,7 +65,7 @@ def test_add_ilk_wrong_dim(shape):
 def test_add_ilk_time_wrong_dim(shape):
     site = Hornsrev1Site()
     wt, wd, ws = np.arange(2), np.arange(100), np.arange(100) % 20 + 3
-    t = pd.date_range("2000-01-01", freq="10T", periods=100)
+    t = pd.date_range("2000-01-01", freq="10min", periods=100)
     lw = site.local_wind(wt * 1000, wt * 0, wt * 0 + 70, wd, ws, time=t)
 
     with pytest.raises(ValueError):
