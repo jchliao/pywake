@@ -427,7 +427,7 @@ class SimulationResult(xr.Dataset):
             ('wt', 'wt', np.arange(n_wt), 'Wind turbine number'),
             ('wd', ('wd', 'time')['time' in lw], lw.wd, 'Ambient reference wind direction [deg]'),
             ('ws', ('ws', 'time')['time' in lw], lw.ws, 'Ambient reference wind speed [m/s]'),
-            ('type', 'wt', np.zeros(n_wt) + type_i, 'Wind turbine type')]}
+            ('type', 'wt', np.zeros((n_wt,), dtype=int) + type_i, 'Wind turbine type')]}
         if 'time' in lw:
             coords['time'] = ('time', lw.time)
 
