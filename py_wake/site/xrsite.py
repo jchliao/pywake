@@ -432,7 +432,7 @@ class GlobalWindAtlasSite(XRSite):
             self.gwc_ds['TI'] = ti
         ds = self.gwc_ds.interp(roughness=roughness).rename(height='h')
         if height is not None:
-            ds = ds.interp(z=height)
+            ds = ds.interp(h=height)
         XRSite.__init__(self, ds=ds, **kwargs)
 
     def _read_gwc(self, lat, long):  # pragma: no cover

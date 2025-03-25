@@ -296,6 +296,29 @@ def test_GlobalWindAtlasSite():
     for var, atol in [('Sector_frequency', 0.03), ('Weibull_A', 1.6), ('Weibull_k', 0.4)]:
         npt.assert_allclose(site.ds.interp(h=70)[var], ref.ds[var], atol=atol)
 
+    def get_mean_ws(h):
+        lw = site.local_wind(wd=270, ws=10, h=h)
+        return weibull.mean(lw['Weibull_A_ilk'], lw['Weibull_k_ilk']).flatten().squeeze()
+
+    try:
+        site2 = GlobalWindAtlasSite(lat, long, roughness=0.001, ti=0.075, height=[75, 150])
+    except (HTTPError, URLError):
+        pytest.xfail('HTTPError in GlobalWindAtlasSite')
+
+    if 0:
+        h = np.linspace(10, 200)
+        plt.plot([get_mean_ws(h) for h in h], h)
+        plt.plot(
+            weibull.mean(
+                site2.ds.sel(
+                    wd=270, ws=10).Weibull_A, site2.ds.sel(
+                    wd=270, ws=10).Weibull_k), [
+                75, 150], '.r')
+        plt.show()
+
+    npt.assert_array_equal(weibull.mean(site2.ds.sel(wd=270, ws=10).Weibull_A, site2.ds.sel(wd=270, ws=10).Weibull_k),
+                           [get_mean_ws(h) for h in [75, 150]])
+
 
 def test_wrong_height():
     ti = 0.1
