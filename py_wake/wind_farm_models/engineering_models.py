@@ -162,6 +162,10 @@ class EngineeringWindFarmModel(WindFarmModel):
         deficit, blockage = self._add_blockage(deficit, dw_ijlk, **kwargs)
         return deficit, uc, sigma_sqr, blockage
 
+    def _calc_added_turbulence(self, **kwargs):
+        """Calculate added turbulence intensity."""
+        return self.turbulenceModel.calc_added_turbulence(**kwargs)
+
     def _calc_wt_interaction_args(self, kwargs):
         """Used for parallel execution"""
         return self.calc_wt_interaction(**kwargs)
@@ -332,7 +336,7 @@ class EngineeringWindFarmModel(WindFarmModel):
         # Calculate added Turbulence
         # ===============================================================================================================
         if self.turbulenceModel:
-            add_turb_ijlk = self.turbulenceModel.calc_added_turbulence(**model_kwargs)
+            add_turb_ijlk = self._calc_added_turbulence(**model_kwargs)
 
         # ===============================================================================================================
         # Sum up deficits
@@ -729,9 +733,8 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
                         blockage_nk.append(blockage[0])
                 deficit_nk.append(deficit[0])
 
+                # Calculate added turbulence intensity.
                 if self.turbulenceModel:
-
-                    # Calculate added turbulence
                     add_turb_nk.append(self.turbulenceModel(**model_kwargs)[0])
 
         WS_eff_jlk, ct_jlk = np.array(WS_eff_mk), np.array(ct_jlk)
