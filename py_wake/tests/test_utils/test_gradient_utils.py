@@ -403,7 +403,7 @@ def test_trapz(y, x, axis):
     if callable(y):
         y = y(x)
 
-    npt.assert_array_equal(np.trapz(y, x, axis), gradients.trapz(y, x, axis))
+    npt.assert_array_equal(gradients.trapz_fun(y, x, axis), gradients.trapz(y, x, axis))
     dtrapz_dy_lst = [method(gradients.trapz, True)(y, x, axis) for method in [fd, cs, autograd]]
     npt.assert_array_almost_equal(dtrapz_dy_lst[0], dtrapz_dy_lst[1])
     npt.assert_array_equal(dtrapz_dy_lst[1], dtrapz_dy_lst[2])

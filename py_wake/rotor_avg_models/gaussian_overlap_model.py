@@ -4,6 +4,7 @@ from py_wake import np
 from numpy import newaxis as na
 import xarray as xr
 from tqdm import tqdm
+from py_wake.utils.gradients import trapz
 from py_wake.utils.grid_interpolator import GridInterpolator
 from scipy.interpolate import RectBivariateSpline
 
@@ -53,7 +54,7 @@ def make_lookup_table(n_theta, n_r, dr=.5, dcw=.5):  # pragma: no cover
             dat = np.exp(- 1 / 2 * (r ** 2 + cw_sigma**2 - 2 * r * cw_sigma * np.cos(theta))) * r
             dtheta = np.diff(theta.flatten()[:2])
             dr = np.diff(r.flatten()[:2])
-            return np.trapz(np.trapz(dat, dx=dtheta, axis=1), dx=dr, axis=1)
+            return trapz(trapz(dat, dx=dtheta, axis=1), dx=dr, axis=1)
         else:
             return np.exp(-(cw_sigma[:, 0, 0]**2) / 2)  # use point value
     dat = np.array([cw_table(R) for R in tqdm(R_sigma)])

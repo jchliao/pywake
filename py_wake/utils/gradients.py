@@ -315,6 +315,13 @@ def erf(z):
         return scipy_erf(z)
 
 
+try:
+    trapz_fun = np.trapezoid  # Numpy 2
+except AttributeError:  # pragma: no cover
+    # Numpy 1
+    trapz_fun = np.trapz  # pragma: no cover
+
+
 # def get_dtype(arg_lst):
 #     return (float, np.complex128)[any([np.iscomplexobj(v) for v in arg_lst])]
 def trapz(y, x, axis=-1):
@@ -334,7 +341,7 @@ def trapz(y, x, axis=-1):
         else:   # pragma: no cover
             raise NotImplementedError()
     else:
-        return np.trapz(y, x, axis=axis)
+        return trapz_fun(y, x, axis=axis)
 
 
 def mod(x1, x2):
