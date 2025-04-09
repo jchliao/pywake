@@ -267,6 +267,8 @@ class EngineeringWindFarmModel(WindFarmModel):
 
         lw_j = self.site.local_wind(x=x_j, y=y_j, h=h_j, wd=wd, ws=ws, time=time)
         I, J, L, K = [len(x) for x in [wt_x_ilk, x_j, wd, ws]]
+        if time is not False:
+            K = 1
 
         def get_ilk(k):
             v = sim_res_data[k].ilk()

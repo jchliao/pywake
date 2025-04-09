@@ -14,9 +14,13 @@ from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
 from py_wake.examples.data.hornsrev1 import V80
 from py_wake.literature.iea37_case_study1 import IEA37CaseStudy1
 from py_wake.deficit_models.gaussian import IEA37SimpleBastankhahGaussianDeficit
-from py_wake.wind_farm_models.engineering_models import PropagateDownwind
+from py_wake.wind_farm_models.engineering_models import PropagateDownwind, All2AllIterative
 from py_wake.superposition_models import SquaredSum
 import warnings
+from py_wake.deficit_models.no_wake import NoWakeDeficit
+from py_wake.site._site import UniformSite
+from py_wake.ground_models.ground_models import Mirror
+from py_wake.deficit_models.selfsimilarity import SelfSimilarityDeficit2020
 
 
 @pytest.fixture(autouse=True)
@@ -443,3 +447,16 @@ def test_wt_dependent_WS():
         with warnings.catch_warnings():
             warnings.simplefilter('error', UserWarning)
             sim_res.flow_map()
+
+
+def test_IJLK():
+    class MyWakeModel(NoWakeDeficit):
+        def calc_deficit(self, WS_ilk, dw_ijlk, IJLK, **_):
+            print(IJLK)
+            assert IJLK in [(2, 2, 3, 1), (2, 100, 3, 1)]
+            return NoWakeDeficit.calc_deficit(self, WS_ilk, dw_ijlk, **_)
+
+    wfm = All2AllIterative(UniformSite(), V80(), wake_deficitModel=MyWakeModel())
+
+    sim_res = wfm([0, 1000], [0, 0], ws=[5, 10, 15], wd=[270, 270, 270], time=True, WS_eff=0)
+    sim_res.flow_map(HorizontalGrid(x=np.linspace(0, 1000, 10), y=np.linspace(0, 1000, 10)), time=[0, 1, 2])
