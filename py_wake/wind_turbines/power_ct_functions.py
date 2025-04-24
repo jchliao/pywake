@@ -361,7 +361,12 @@ class PowerCtNDTabular(PowerCtFunction):
         try:
             return self.interp[run_only](args)
         except ValueError:
-            check_input(self.interp[run_only].x, args.T, self.input_keys)
+            try:
+                # try to raise an exception with a better error message
+                check_input(self.interp[run_only].x, args.T, self.input_keys)
+                raise  # pragma: no cover  # raise original exception
+            except BaseException:
+                raise  # raise new and better exception
 
 
 class PowerCtXr(PowerCtNDTabular):
