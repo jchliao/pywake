@@ -1,6 +1,6 @@
 from py_wake.site._site import UniformSite
 from py_wake.examples.data.hornsrev1 import V80
-from py_wake.ground_models import Mirror
+from py_wake.ground_models import Mirror, MultiMirror
 from py_wake.deficit_models.noj import NOJ, NOJDeficit
 import matplotlib.pyplot as plt
 from py_wake.flow_map import YZGrid
@@ -12,6 +12,11 @@ from py_wake.wind_farm_models.engineering_models import PropagateDownwind, All2A
 import pytest
 from py_wake.deficit_models.gaussian import ZongGaussianDeficit
 from py_wake.turbulence_models.stf import STF2017TurbulenceModel
+from py_wake.deficit_models.no_wake import NoWakeDeficit
+from py_wake.flow_map import XYGrid, XZGrid
+from py_wake.wind_turbines import WindTurbine
+from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
+from py_wake.deficit_models import SelfSimilarityDeficit2020
 import warnings
 
 
@@ -109,7 +114,7 @@ def test_Mirror(wfm_cls):
 
 @pytest.mark.parametrize('wfm_cls', [PropagateDownwind, All2AllIterative])
 @pytest.mark.parametrize('groundModel,superpositionModel', [(Mirror(), LinearSum()),
-                                                            (Mirror(), SquaredSum())])
+                                                            (Mirror(), SquaredSum()),])
 def test_Mirror_flow_map(wfm_cls, groundModel, superpositionModel):
     site = UniformSite([1], ti=0.1)
     wt = V80()
@@ -154,3 +159,52 @@ def test_Mirror_flow_map_multiple_wd():
         plt.show()
     plt.close('all')
     npt.assert_array_equal(fm_ref.WS_eff, fm_res.WS_eff)
+
+
+def test_MultiMirror():
+
+    # create dummy sites and turbine
+    class Dummy(WindTurbine):
+        def __init__(self, name='dummy', ct=1.0, D=1., zh=1.5):
+            WindTurbine.__init__(self, name=name, diameter=D,
+                                 hub_height=zh, powerCtFunction=PowerCtTabular([-100, 100], [0, 0], 'kW', [ct, ct]))
+
+    class BastankhahSite(UniformSite):
+        def __init__(self, ws=1., ti=0.1):
+            UniformSite.__init__(self, ti=ti, ws=ws)
+
+    ct = 1.
+    D = 1.
+    hub_height = 0.6 * D
+    mirror_height = 1.2 * D
+
+    x = np.linspace(-2. * D, 2. * D, 401)
+    y = np.linspace(0., 1.2 * D, 201)
+    hgrid = XYGrid(x=x, y=y)
+    vgrid = XZGrid(0.0, x=x, z=y)
+
+    bmodels = {
+        "MultiMirror(n_reps=0)": SelfSimilarityDeficit2020(groundModel=MultiMirror(mirror_height, n_reps=0)),
+        "MultiMirror(n_reps=4)": SelfSimilarityDeficit2020(groundModel=MultiMirror(mirror_height, n_reps=4)),
+        "MultiMirror(n_reps=0) Verification": SelfSimilarityDeficit2020(),
+    }
+    wfms = []
+    for name, bmodel in bmodels.items():
+        wfms.append(All2AllIterative(BastankhahSite(), Dummy(ct=ct, D=D, zh=hub_height),
+                                     wake_deficitModel=NoWakeDeficit(),
+                                     blockage_deficitModel=bmodel))
+
+    fms = []
+    for i in range(len(wfms) - 1):
+        fms.append(wfms[i](x=[0], y=[0], wd=270., ws=1.).flow_map(vgrid))
+    wt_y = [hub_height,
+            -hub_height,
+            mirror_height + (mirror_height - hub_height),
+            mirror_height + (mirror_height - hub_height) + 2 * hub_height]
+    fms.append(wfms[-1](x=[0, 0, 0, 0], y=wt_y,
+                        wd=270., ws=1.).flow_map(hgrid))
+    # check verification
+    npt.assert_array_almost_equal(fms[0].WS_eff, fms[-1].WS_eff, 10)
+
+    # check whether several repetitions are also working
+    npt.assert_almost_equal(np.sum(fms[1].WS_eff), 80601.)
