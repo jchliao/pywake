@@ -41,16 +41,14 @@ check_code_style:  # name the job what we like
 test_PyWake_windows:  # name the job what we like
   stage:  # build, test, deploy defined by default [2]
     test
+  image: registry.windenergy.dtu.dk/dockerimages/windows-python:ltsc2019_py312
   script:  # runs on windows machine due to tag below
-  - conda init powershell
-  - "if (test-path $PROFILE.CurrentUserAllHosts) { & $PROFILE.CurrentUserAllHosts}"
-  - conda activate py312
-  - pip install -e .[test] --no-deps
+  - pip install -e .[test]
   - python -V
   - pip list
   - pytest --cov-report term-missing:skip-covered --cov-report xml:coverage.xml --cov=py_wake --cov-config .coveragerc
   tags:  # tag for shared runner on windows machine
-  - ANMH_old
+  - docker-windows
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     reports:

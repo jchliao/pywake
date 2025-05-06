@@ -48,6 +48,7 @@ test  = [ 'pytest',  # for testing
           'scikit-learn',  # MinMaxScaler
           'surrogates-interface',
           'tensorflow',  # load surrogates
+          'ipywidgets',  # notebook widgets
         ] 
 docs = [
           'sphinx',  # generating documentation
