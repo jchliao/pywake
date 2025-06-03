@@ -263,7 +263,10 @@ class EngineeringWindFarmModel(WindFarmModel):
     def get_map_args(self, x_j, y_j, h_j, sim_res_data, D_dst=0):
         wt_d_i = self.windTurbines.diameter(sim_res_data.type)
         wd, ws = [np.atleast_1d(sim_res_data[k].values) for k in ['wd', 'ws']]
-        time = sim_res_data.get('time', False)
+        if 'time' in sim_res_data:
+            time = np.atleast_1d(sim_res_data['time'].values)
+        else:
+            time = False
         wt_x_ilk = sim_res_data['x'].ilk()
         WD_il = sim_res_data.WD.ilk()
 
