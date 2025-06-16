@@ -1,6 +1,7 @@
 from py_wake import np
 from numpy import newaxis as na
 from py_wake.utils.model_utils import ModelMethodWrapper, Model
+from py_wake.superposition_models import LinearSum
 
 
 class GroundModel(Model, ModelMethodWrapper):
@@ -16,10 +17,19 @@ class NoGround(GroundModel):
 
 
 class Mirror(GroundModel):
-    """Consider the ground as a mirror (modeled by adding underground wind turbines).
-    The deficits caused by the above- and below-ground turbines are summed
-    by the superpositionModel of the windFarmModel
-    """
+    """Consider the ground as a mirror (modeled by adding underground wind turbines)"""
+
+    def __init__(self, superpositionModel=None):
+        """
+        Parameters
+        ----------
+        superpositionModel : SuperPositionModel, optional
+            Superposition model used to sum wakes from the above and below-ground turbine.
+            If None, default, the superposition model used for the deficit model is applied.
+            I.e. WindFarmModel.superpositionModel when applied to wake deficits and
+            WindFarmModel.blockageModel.superpositionModel when applied to blockage deficits.
+        """
+        self.superpositionModel = superpositionModel
 
     def _update_kwargs(self, **kwargs):
         I = kwargs['IJLK'][0]
@@ -42,24 +52,35 @@ class Mirror(GroundModel):
         above_ground = ((new_kwargs['h_ilk'][:, na, :] + new_kwargs['dh_ijlk']) > 0)
         values_pijlk = func(**new_kwargs)
         deficit_mijlk = np.reshape(values_pijlk * above_ground, (2,) + IJLK)
-        return self.windFarmModel.superpositionModel(deficit_mijlk)
+        superpositionModel = self.superpositionModel or getattr(func, '__self__', func).superpositionModel
+        return superpositionModel(deficit_mijlk)
 
     def _calc_layout_terms(self, func, **kwargs):
         new_kwargs = self._update_kwargs(**kwargs)
         func(**new_kwargs)
 
 
-class MultiMirror(GroundModel):
+class MultiMirror(Mirror):
     """
     Considers the ground and a mirror aloft as a mirror by default. Two
     mirrors lead to infinitely many mirror planes, so the user can set how
     many mirrors should be enforced (n_mirrors = 2 + n_reps). Be aware that
     the number of turbines grows quickly n_turbines = 2^(n_mirrors).
-    The deficits caused by all turbines are summed
-    by the superpositionModel of the windFarmModel
     """
 
-    def __init__(self, mirror_height=1000., n_reps=0):
+    def __init__(self, mirror_height=1000., n_reps=0, superpositionModel=None):
+        """
+        Parameters
+        ----------
+        mirror_heigth : int or float, optional
+        n_reps : int optional
+        superpositionModel : SuperPositionModel, optional
+            Superposition model used to sum wakes from the above and below-ground turbine.
+            If None, default, the superposition model used for the deficit model is applied.
+            I.e. WindFarmModel.superpositionModel when applied to wake deficits and
+            WindFarmModel.blockageModel.superpositionModel when applied to blockage deficits.
+        """
+        Mirror.__init__(self, superpositionModel)
         # no. of request repeats
         self.n_reps = n_reps
         # initialize mirror heights
@@ -117,7 +138,8 @@ class MultiMirror(GroundModel):
         above_ground = np.ones_like(new_kwargs['dh_ijlk'])
         values_pijlk = func(**new_kwargs)
         deficit_mijlk = np.reshape(values_pijlk * above_ground, (2**self.n_mirrors,) + IJLK)
-        return self.windFarmModel.superpositionModel(deficit_mijlk)
+        superpositionModel = self.superpositionModel or func.__self__.superpositionModel
+        return superpositionModel(deficit_mijlk)
 
     def _calc_layout_terms(self, func, **kwargs):
         new_kwargs = self._update_kwargs(**kwargs)

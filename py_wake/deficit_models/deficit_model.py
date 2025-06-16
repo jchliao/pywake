@@ -12,8 +12,10 @@ from py_wake.utils import gradients
 class DeficitModel(ABC, RotorAvgAndGroundModelContainer):
     deficit_initalized = False
 
-    def __init__(self, rotorAvgModel=None, groundModel=None, use_effective_ws=True, use_effective_ti=False):
-        RotorAvgAndGroundModelContainer.__init__(self, rotorAvgModel=rotorAvgModel, groundModel=groundModel)
+    def __init__(self, superpositionModel=None, rotorAvgModel=None,
+                 groundModel=None, use_effective_ws=True, use_effective_ti=False):
+        RotorAvgAndGroundModelContainer.__init__(self, superpositionModel=superpositionModel,
+                                                 rotorAvgModel=rotorAvgModel, groundModel=groundModel)
 
         self.WS_key = ['WS_ilk', 'WS_eff_ilk'][use_effective_ws]
         self.TI_key = ['TI_ilk', 'TI_eff_ilk'][use_effective_ti]
@@ -93,17 +95,19 @@ class BlockageDeficitModel(DeficitModel):
             Superposition model used to sum blockage deficit.
             If None, the superposition model of the wind farm model is used
         """
-        DeficitModel.__init__(self, rotorAvgModel=rotorAvgModel, groundModel=groundModel,
+        DeficitModel.__init__(self, superpositionModel=superpositionModel, rotorAvgModel=rotorAvgModel, groundModel=groundModel,
                               use_effective_ws=use_effective_ws)
         self.upstream_only = upstream_only
-        self.superpositionModel = superpositionModel
 
-    def calc_blockage_deficit(self, dw_ijlk, **kwargs):
-        deficit_ijlk = self.wrap(self.calc_deficit)(dw_ijlk=dw_ijlk, **kwargs)
+    def _calc_deficit(self, dw_ijlk, **kwargs):
+        deficit_ijlk = self.calc_deficit(dw_ijlk=dw_ijlk, **kwargs)
         if self.upstream_only:
             rotor_pos = -1e-10
             deficit_ijlk *= (dw_ijlk < rotor_pos)
         return deficit_ijlk
+
+    def calc_blockage_deficit(self, dw_ijlk, **kwargs):
+        return self.wrap(self._calc_deficit)(dw_ijlk=dw_ijlk, **kwargs)
 
     def remove_wake(self, deficit_ijlk, dw_ijlk, cw_ijlk, D_src_il, wake_radius_ijlk, induc_ijlk=None):
         # indices in downstream where cw < wake_radius
@@ -207,7 +211,8 @@ class XRLUTDeficitModel(WakeDeficitModel, BlockageDeficitModel, XRLUTModel):
         """
         XRLUTModel.__init__(self, da, get_input, get_output, method=method, bounds=bounds)
         BlockageDeficitModel.__init__(self, upstream_only=True, rotorAvgModel=rotorAvgModel, groundModel=groundModel)
-        WakeDeficitModel.__init__(self, rotorAvgModel, groundModel, use_effective_ws, use_effective_ti)
+        WakeDeficitModel.__init__(self, rotorAvgModel=rotorAvgModel, groundModel=groundModel,
+                                  use_effective_ws=use_effective_ws, use_effective_ti=use_effective_ti)
 
     @property
     def args4deficit(self):

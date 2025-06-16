@@ -301,16 +301,19 @@ class FlowMap(FlowBox):
 
         return c
 
-    def min_WS_eff(self, x=None, h=None):
+    def min_WS_eff(self, x=None):
         if x is None:
             x = self.x
-        if h is None:
-            h = self.h[0].item()
-        WS_eff = self.WS_eff.sel_interp_all(xr.Dataset(coords={'x': x, 'h': h}))
-        y = WS_eff.y.values
+        WS_eff = self.WS_eff.sel_interp_all(xr.Dataset(coords={'x': x, 'h': self.h[self.h > 0]}))
+        h = np.atleast_1d(WS_eff.h.values)
+        y = np.atleast_1d(WS_eff.y.values)
 
-        def get_min(y, v):
-            i = np.argmin(v)
+        assert len(h) == 1 or len(y) == 1
+        pos_lst = [y, h][len(h) > 1]
+        name = ['y', 'h'][len(h) > 1]
+
+        def get_min(v):
+            i = np.maximum(np.argmin(v), 3)
             s = slice(i - 3, i + 4)
             if len(v[s]) < 7 or len(np.unique(v[s])) == 1:
                 return np.nan
@@ -321,10 +324,10 @@ class FlowMap(FlowBox):
 #             plt.axvline(np.interp(0, InterpolatedUnivariateSpline(y[s], v[s]).derivative()(y[s]), y[s]))
 #             plt.axvline(0, color='k')
 #             plt.show()
-            return np.interp(0, InterpolatedUnivariateSpline(y[s], v[s]).derivative()(y[s]), y[s])
+            return np.interp(0, InterpolatedUnivariateSpline(pos_lst[s], v[s]).derivative()(pos_lst[s]), pos_lst[s])
 
-        y_min_ws = [get_min(y, ws) for ws in WS_eff.squeeze(['ws', 'wd']).T.values]
-        return xr.DataArray(y_min_ws, coords={'x': x, 'h': h}, dims='x')
+        y_min_ws = [get_min(ws.values) for ws in WS_eff.squeeze(['ws', 'wd']).transpose('x', 'y', 'h').squeeze()]
+        return xr.DataArray(y_min_ws, coords={'x': x}, dims='x', name=name)
 
     def plot_deflection_grid(self, normalize_with=1, ax=None):
         assert self.windFarmModel.deflectionModel is not None

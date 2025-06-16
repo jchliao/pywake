@@ -95,11 +95,13 @@ class ModelMethodWrapper():
 
         def w(*args, **kwargs):
             return wrapper(f, *args, **kwargs)
+        w.superpositionModel = getattr(f, '__self__', f).superpositionModel
         return w
 
 
 class RotorAvgAndGroundModelContainer():
-    def __init__(self, groundModel=None, rotorAvgModel=None):
+    def __init__(self, superpositionModel, groundModel, rotorAvgModel):
+        self.superpositionModel = superpositionModel
         self.groundModel = groundModel
         self.rotorAvgModel = rotorAvgModel
 

@@ -26,7 +26,7 @@ class Nygaard_2022(PropagateDownwind):
 
         wake_deficitModel = TurboGaussianDeficit(
             ct2a=ct2a_mom1d,
-            groundModel=Mirror(),
+            groundModel=Mirror(superpositionModel=SquaredSum()),
             rotorAvgModel=GaussianOverlapAvgModel(),
             # ctlim=0.96 corresponds to limiting the term in the sqrt of epsilon to 3 as in
             # the matlab code from Ørsted (https://github.com/OrstedRD/TurbOPark/blob/main/TurbOPark.m#L197)

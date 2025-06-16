@@ -84,6 +84,7 @@ class EngineeringWindFarmModel(WindFarmModel):
             self.wake_deficitModel.rotorAvgModel = self.wake_deficitModel.rotorAvgModel or rotorAvgModel
 
         self.superpositionModel = superpositionModel
+        self.wake_deficitModel.superpositionModel = superpositionModel
         self.blockage_deficitModel = blockage_deficitModel
         self.deflectionModel = deflectionModel
         self.turbulenceModel = turbulenceModel
@@ -99,6 +100,11 @@ class EngineeringWindFarmModel(WindFarmModel):
         # self.args4deficit = set(self.args4deficit) | {'yaw_ilk'}
         if self.blockage_deficitModel:
             self.args4deficit = set(self.args4deficit) | set(self.blockage_deficitModel.args4deficit)
+            # use linear sum as default blockage superpositionModel
+            is_w_or_c_sum = isinstance(self.superpositionModel, (WeightedSum, CumulativeWakeSum))
+            alt_model = [self.superpositionModel, LinearSum()][is_w_or_c_sum]
+            self.blockage_deficitModel.superpositionModel = self.blockage_deficitModel.superpositionModel or alt_model
+
         self.args4all = set(self.args4deficit)
         if self.turbulenceModel:
             self.args4all |= set(self.turbulenceModel.args4model)
@@ -364,11 +370,7 @@ class EngineeringWindFarmModel(WindFarmModel):
 
         WS_eff_jlk = WS_jlk - self.superpositionModel.superpose_deficit(**sp_kwargs)
         if self.blockage_deficitModel:
-            if isinstance(self.superpositionModel, (WeightedSum, CumulativeWakeSum)):
-                blockage_superpositionModel = self.blockage_deficitModel.superpositionModel or LinearSum()
-            else:
-                blockage_superpositionModel = self.blockage_deficitModel.superpositionModel or self.superpositionModel
-            WS_eff_jlk -= blockage_superpositionModel(blockage_ijlk)
+            WS_eff_jlk -= self.blockage_deficitModel.superpositionModel(blockage_ijlk)
 
         # ===============================================================================================================
         # Sum up added Turbulence
@@ -495,12 +497,9 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
 
         if self.blockage_deficitModel:
             # use linear sum as default blockage superpositionModel
-            alt_model = [self.superpositionModel, LinearSum()][isinstance(
-                self.superpositionModel, (WeightedSum, CumulativeWakeSum))]
-            self.blockage_superpositionModel = self.blockage_deficitModel.superpositionModel or alt_model
             msg = "PropagateDownwind does not work with SquaredSum when the blockage model has both up and downstream effects"
             assert self.blockage_deficitModel.upstream_only or not isinstance(
-                self.blockage_superpositionModel, SquaredSum), msg
+                self.blockage_deficitModel.superpositionModel, SquaredSum), msg
 
         for j in tqdm(range(I), disable=I <= 1 or not self.verbose,
                       desc="Calculate flow interaction (PropagateUpDownIterative)", unit="wt"):
@@ -638,7 +637,7 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
                 if self.direction == 'down':
                     WS_eff_lk = WS_eff_lk - self.superpositionModel.superpose_deficit(**sp_kwargs)
                 if self.blockage_deficitModel:
-                    WS_eff_lk = WS_eff_lk - self.blockage_superpositionModel(get_value2WT(blockage_nk))
+                    WS_eff_lk = WS_eff_lk - self.blockage_deficitModel.superpositionModel(get_value2WT(blockage_nk))
                 WS_eff_mk.append(WS_eff_lk)
 
                 if self.turbulenceModel:
@@ -939,12 +938,6 @@ class All2AllIterative(EngineeringWindFarmModel):
 
         i2i_zero = ~np.eye(I).astype(bool)[:, :, na, na]
 
-        if self.blockage_deficitModel:
-            # use linear sum as default blockage superpositionModel
-            alt_model = [self.superpositionModel, LinearSum()][isinstance(
-                self.superpositionModel, (WeightedSum, CumulativeWakeSum))]
-            blockage_superpositionModel = self.blockage_deficitModel.superpositionModel or alt_model
-
         # Iterate until convergence
         for j in tqdm(range(max(I, 20)), disable=I <= 1 or not self.verbose,
                       desc="Calculate flow interaction (All2AllIterative)", unit="Iteration"):
@@ -1032,7 +1025,7 @@ class All2AllIterative(EngineeringWindFarmModel):
 
             WS_eff_ilk = WS_ilk.astype(dtype) - self.superpositionModel.superpose_deficit(**sp_kwargs)
             if self.blockage_deficitModel:
-                WS_eff_ilk -= blockage_superpositionModel(blockage_iilk)
+                WS_eff_ilk -= self.blockage_deficitModel.superpositionModel(blockage_iilk)
 
             if self.turbulenceModel:
                 add_turb_ijlk = self.turbulenceModel(**model_kwargs)

@@ -174,7 +174,7 @@ def test_fuga_downwind():
         fm = sim_res.flow_map(XYGrid(x=np.arange(-100, 500, 5)))
         npt.assert_almost_equal(fm.WS_eff.min(), min_ws)
         fm.plot_wake_map(ax=ax, levels=levels)
-        fm.min_WS_eff(fm.x, 70).plot(ax=ax, color='r')
+        fm.min_WS_eff(fm.x).plot(ax=ax, color='r')
         plt.axhline(0, color='k')
     plot(wfm_UL, 0, ax1, 7.15853738)
     plot(wfm_UL, 30, ax2, 8.12262377)
