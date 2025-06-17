@@ -25,21 +25,21 @@ class GenericWindTurbine(WindTurbine):
         diameter : int or float
             Rotor diameter [m]
         turbulence_intensity : float
-            Turbulence intensity
+            Turbulence intensity [-], default is 0.1 (10 %)
         air_density : float optional
-            Density of air [kg/m^3], defualt is 1.225
+            Density of air [kg/m^3], default is 1.225
         max_cp : float
             Maximum power coefficient
         constant_ct : float, optional
             Ct value in constant-ct region
-        gear_loss_const : float
-            Constant gear loss [%]
-        gear_loss_var : float
-            Variable gear loss [%]
-        generator_loss : float
-            Generator loss [%]
-        converter_loss : float
-            converter loss [%]
+        gear_loss_const : float, optional
+            Constant gear loss as factor of power_norm [-], default is 0.01 (1 %)
+        gear_loss_var : float, optional
+            Variable gear loss [-], default is 0.014 (1.4 %)
+        generator_loss : float, optional
+            Generator loss [-], default is 0.03 (3 %)
+        converter_loss : float, optional
+            converter loss [-], default is 0.03 (3 %)
         ws_lst : array_like
             List of wind speeds. The power/ct tabular will be calculated for these wind speeds
         ws_cutin : number or None, optional
@@ -97,23 +97,23 @@ class GenericTIRhoWindTurbine(WindTurbine):
         TI_eff_lst : array_like
             List of turbulence intensities to include in tabular
         default_TI_eff : float, optional
-            Default turbulence intensity, default is 10%
+            Default turbulence intensity [-], default is 10%
         Air_density_lst : array_like
             List of air densities [kg/m^3] to include in tabular
         default_Air_density : float, optional
-            Default air_density [kg/m^3], defualt is 1.225
+            Default air_density [kg/m^3], default is 1.225
         max_cp : float
             Maximum power coefficient
         constant_ct : float, optional
             Ct value in constant-ct region
         gear_loss_const : float
-            Constant gear loss [%]
-        gear_loss_var : float
-            Variable gear loss [%]
-        generator_loss : float
-            Generator loss [%]
-        converter_loss : float
-            converter loss [%]
+            Constant gear loss as factor of power_norm [-], default is 0.01 (1 %)
+        gear_loss_var : float, optional
+            Variable gear loss [-], default is 0.014 (1.4 %)
+        generator_loss : float, optional
+            Generator loss [-], default is 0.03 (3 %)
+        converter_loss : float, optional
+            converter loss [-], default is 0.03 (3 %)
         additional_models : list, optional
             list of additional models.
         """
@@ -156,7 +156,7 @@ class SimpleGenericWindTurbine(WindTurbine):
         diameter : int or float
             Rotor diameter [m]
         air_density : float optional
-            Density of air [kg/m^3], defualt is 1.225
+            Density of air [kg/m^3], default is 1.225
         max_cp : float
             Maximum power coefficient
         constant_ct : float, optional
