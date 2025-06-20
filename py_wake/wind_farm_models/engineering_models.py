@@ -292,7 +292,7 @@ class EngineeringWindFarmModel(WindFarmModel):
         map_arg_funcs = {k.replace('CT', 'ct') + '_ilk': get_ilk(k)
                          for k in sim_res_data if k not in ['wd_bin_size', 'ws_l', 'ws_u']}
         map_arg_funcs.update({
-            'type_i': lambda l: type_i,
+            'type_il': lambda l: type_i[:, na],
             'D_src_il': lambda l: wt_d_i[:, na],
             'D_dst_ijl': lambda l: np.zeros((1, 1, 1)) + D_dst,
             'IJLK': lambda l=slice(None), I=I, J=J, L=L, K=K: (I, J, len(np.arange(L)[l]), K)})
@@ -689,7 +689,7 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
                              'IJLK': lambda: (1, i_dw.shape[1], L, K),
                              'WD_ilk': lambda: WD_mk[m][na],
                              **{k + '_ilk': lambda k=k: ilk2mk(kwargs[k + '_ilk'])[m][na] for k in 'xyh'},
-                             'type_i': lambda: kwargs['type_i'][i_wt_l]
+                             'type_il': lambda: kwargs['type_i'][i_wt_l][na]
 
                              }
                 model_kwargs = {k: arg_funcs[k]() for k in self.args4all if k in arg_funcs}
@@ -911,21 +911,21 @@ class All2AllIterative(EngineeringWindFarmModel):
             ct_ilk_idle = 0
         unstable_lk = np.zeros((L, K), dtype=bool)
         ioff = np.broadcast_to(ct_ilk, (I, L, K)) < -1  # index of off/idling turbines
-        D_src_il = D_i[:, na]
         model_kwargs = {'WS_ilk': WS_ilk,
                         'WS_eff_ilk': WS_eff_ilk,
                         'WS_jlk': WS_ilk,
                         'WD_ilk': WD_ilk,
                         'TI_ilk': TI_ilk,
                         'TI_eff_ilk': TI_eff_ilk,
-                        'D_src_il': D_src_il,
-                        'D_dst_ijl': D_src_il[na],
+                        'D_src_il': D_i[:, na],
+                        'D_dst_ijl': D_i[na, :, na],
                         'dw_ijlk': dw_iilk,
                         'hcw_ijlk': hcw_iilk,
                         'cw_ijlk': np.sqrt(hcw_iilk**2 + dh_iilk**2),
                         'dh_ijlk': dh_iilk,
                         'z_ijlk': kwargs['h_ilk'][:, na] + dh_iilk,
                         'IJLK': (I, I, L, K),
+                        'type_il': kwargs['type_i'][:, na],
                         ** kwargs,
                         }
         if 'wake_radius_ijl' in self.args4all:

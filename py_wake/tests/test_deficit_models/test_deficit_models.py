@@ -606,14 +606,14 @@ def test_flow_map_symmetry(deficitModel):
 
 
 @pytest.mark.parametrize('wfm_cls', [PropagateDownwind, All2AllIterative])
-def test_type_i(wfm_cls):
+def test_type_il(wfm_cls):
     class MyWakeModel(NOJDeficit):
-        def calc_deficit(self, ct_ilk, D_src_il, dw_ijlk, cw_ijlk, type_i, **kwargs):
+        def calc_deficit(self, ct_ilk, D_src_il, dw_ijlk, cw_ijlk, type_il, WD_ilk, **kwargs):
             term_numerator_ilk = 2. * self.ct2a(ct_ilk)
             WS_ref_ilk = kwargs[self.WS_key]
             R_src_il = D_src_il / 2
 
-            k_ijl = np.atleast_3d(self.k_ilk(**kwargs))[:, na, :, 0] * type_i[:, na, na]
+            k_ijl = np.atleast_3d(self.k_ilk(**kwargs))[:, na, :, 0] * type_il[:, :, na]
             wake_radius_ijl = (k_ijl * dw_ijlk[:, :, :, 0] + D_src_il[:, na, :] / 2)
             term_denominator_ijlk = np.where(dw_ijlk > 0, ((wake_radius_ijl / R_src_il[:, na, :])**2)[..., na], 1)
 
@@ -622,11 +622,13 @@ def test_type_i(wfm_cls):
             layout_factor_ijlk = WS_ref_ilk[:, na] * (in_wake_ijlk / term_denominator_ijlk)
             return term_numerator_ilk[:, na] * layout_factor_ijlk
 
-    wts = WindTurbines.from_WindTurbine_lst([IEA37_WindTurbines(), IEA37_WindTurbines()])
+    wts = WindTurbines.from_WindTurbine_lst([IEA37_WindTurbines(), IEA37_WindTurbines(), IEA37_WindTurbines()])
     wfm = wfm_cls(UniformSite(), wts, MyWakeModel(rotorAvgModel=None))
-    sim_res = wfm([0, 0, 0], [0, 200, 400], wd=270, ws=10, type=[0, 1, 1])
+    sim_res = wfm([0, .1, .2], [0, 200, 400], wd=[270, 90], ws=10, type=[0, 1, 2])
     fm = sim_res.flow_map(Points(x=[200, 200, 200], y=[0, 200, 400], h=[110, 110, 110]))
-    npt.assert_allclose(fm.WS_eff, [3.4, 6.1, 6.1], atol=.1)
+    npt.assert_allclose(fm.WS_eff[:, 1], [3.4, 6.1, 7.5], atol=.1)
     if 0:
-        sim_res.flow_map().plot_wake_map()
+        axes = plt.subplots(2, 1)[1]
+        sim_res.flow_map(wd=270).plot_wake_map(ax=axes[0])
+        sim_res.flow_map(wd=90).plot_wake_map(ax=axes[1])
         plt.show()
