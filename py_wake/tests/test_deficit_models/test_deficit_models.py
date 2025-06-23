@@ -276,7 +276,8 @@ def test_wake_radius(deficitModel, wake_radius_ref):
         h_ilk=np.reshape([70, 70, 70, 70, 70], (5, 1, 1)),
         ct_ilk=np.reshape([.8, .8, .8, .4, .8], (5, 1, 1)),
         TI_ilk=np.reshape([.1, .1, .1, .1, .05], (5, 1, 1)),
-        TI_eff_ilk=np.reshape([.1, .1, .1, .1, .05], (5, 1, 1)))[:, 0, 0, 0],
+        TI_eff_ilk=np.reshape([.1, .1, .1, .1, .05], (5, 1, 1)),
+        type_il=np.reshape([0, 0, 0, 0, 0], (5, 1)))[:, 0, 0, 0],
         wake_radius_ref)
 
     # Check that it works when called from WindFarmModel

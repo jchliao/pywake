@@ -321,10 +321,7 @@ def test_JITStreamlinesparquefictio():
         fm.plot_wake_map()
         for sl in stream_lines:
             plt.plot(sl[:, 0], sl[:, 1])
-
         plt.show()
-
-    print()
 
 
 def test_JITStreamlinesparquefictio_yz():

@@ -304,8 +304,6 @@ def test_arctan2(x, y, num):
     if not x == 0 and y == 0:
         # fd different
         npt.assert_array_almost_equal(dydx_lst[0], dydx_lst[1])
-    else:
-        print()
     npt.assert_array_almost_equal(dydx_lst[1], dydx_lst[2])
 
 

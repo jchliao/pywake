@@ -34,7 +34,7 @@ def test_ti_z0(zeta0):
 
 def test_phi():
     zeta = np.linspace(-.1, .1, 11)
-    print(list(np.round(phi(zeta), 3)))
+    # print(list(np.round(phi(zeta), 3)))
     if 0:
         plt.plot(zeta, phi(zeta))
         plt.show()
@@ -43,8 +43,8 @@ def test_phi():
 
 def test_psi():
     zeta = np.linspace(-.1, .1, 51)
-    print(list(np.round(psi(zeta[::5]), 3)))
-    print(list(np.round(psi(zeta[::5], 'Wilson'), 3)))
+    # print(list(np.round(psi(zeta[::5]), 3)))
+    # print(list(np.round(psi(zeta[::5], 'Wilson'), 3)))
     if 0:
         plt.plot(zeta, psi(zeta))
         plt.plot(zeta, psi(zeta, 'Wilson'), label='Wilson')

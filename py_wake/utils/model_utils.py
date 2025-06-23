@@ -22,8 +22,8 @@ class XRLUTModel(Model):
         """
         Parameters
         ----------
-        da : xarray.dataarray
-            dataarray containing lookup table.
+        da : xarray.dataarray, list, tuple
+            dataarray containing lookup table or list of dataarrays (one for each turbine type).
         get_input : function or None, optional
             if None (default): The get_input method of XRDeficitModel is used. This option requires that the
             names of the input dimensions matches names of the default PyWake keyword arguments, e.g. dw_ijlk, WS_ilk,
@@ -44,18 +44,26 @@ class XRLUTModel(Model):
         bounds : {'limit', 'check', 'ignore'}
             how to handle out-of-bounds coordinate interpolation, see GridInterpolator
         """
-        self.da = da
+        if not isinstance(da, (list, tuple)):
+            da = [da]
+        self.da_lst = da
+        if len(da) == 1:
+            self.da = self.da_lst[0]
+        assert all([self.da_lst[0].dims == da.dims for da in self.da_lst]), "All data arrays must have same dimensions"
         self._args4model = getattr(self, '_args4model', set())
+
         if get_input:
             self.get_input = get_input
         else:
-            self._args4model |= set(self.da.dims)
+            self._args4model |= set(self.da_lst[0].dims)
         if get_output:
             self.get_output = get_output
         self._args4model |= (set(inspect.getfullargspec(self.get_input).args) |
-                             set(inspect.getfullargspec(self.get_output).args)) - {'self', 'output_ijlk'}
+                             set(inspect.getfullargspec(self.get_output).args) |
+                             set(inspect.getfullargspec(XRLUTModel.__call__).args)) - {'self', 'output_ijlk'}
 
-        self.interp = GridInterpolator([da[k].values for k in da.dims], da.values, method=method, bounds=bounds)
+        self.interp_lst = [GridInterpolator([da[k].values for k in da.dims], da.values, method=method, bounds=bounds)
+                           for da in self.da_lst]
 
     @property
     def args4model(self):
@@ -67,18 +75,35 @@ class XRLUTModel(Model):
         dimensions of the dataarray, which must have names that matches the names of the default PyWake
         keyword arguments, e.g. dw_ijlk, WS_ilk, D_src_il, etc, or user-specified custom inputs"""
         return [np.expand_dims(kwargs[k], [i for i, d in enumerate('ijlk') if d not in k.split('_')[-1]])
-                for k in self.da.dims]
+                for k in self.da_lst[0].dims]
 
     def get_output(self, output_ijlk, **kwargs):
         """Default get_output function.
         This function just returns the interpolated values"""
         return output_ijlk
 
-    def __call__(self, **kwargs):
-        input_ijlk = self.get_input(**kwargs)
-        IJLK = tuple(np.max([inp.shape for inp in input_ijlk], 0))
-        output_ijlk = self.interp(np.array([np.broadcast_to(inp, IJLK).flatten()
-                                            for inp in input_ijlk]).T).reshape(IJLK)
+    def __call__(self, type_il, **kwargs):
+        kwargs['type_il'] = type_il
+        input_ijlk_lst = self.get_input(**kwargs)
+        IJLK = tuple(np.max([inp.shape for inp in input_ijlk_lst], 0))
+        input_IJLK_lst = [np.broadcast_to(inp, IJLK) for inp in input_ijlk_lst]
+
+        def get_type_output(type_, input_IJLK_lst):
+            return self.interp_lst[type_](np.array([inp.flatten()
+                                                   for inp in input_IJLK_lst]).T).reshape(input_IJLK_lst[0].shape)
+
+        if len(self.interp_lst) == 1:
+            output_ijlk = get_type_output(0, input_IJLK_lst)
+        elif type_il.shape[0] == 1:
+            # PropagateDownwind or All2AllIterative with only one turbine, type depends on l (wind direction)
+            output_ijlk = np.concatenate([get_type_output(int(t), [inp[:, :, [l]] for inp in input_IJLK_lst])
+                                          for l, t in enumerate(type_il[0])], 2)
+        else:
+            # All2AllIterative, type depends on i (wind turbine)
+            assert type_il.shape[1] == 1
+            output_ijlk = np.concatenate([get_type_output(int(t), [inp[[i]] for inp in input_IJLK_lst])
+                                          for i, t in enumerate(type_il[:, 0])], 0)
+
         return self.get_output(output_ijlk, **kwargs)
 
 

@@ -456,7 +456,7 @@ def test_verify_FugaMultiLUT():
     for t in sim_res.time:
         da = sim_res.sel(time=t)
         ti = ['z0=0.00001000_z69.2-93.4', 'z0=0.01703452_z68.5-92.5'][da.TI.item() >= .12]
-        print(fuga_utils.z0(da.TI.item(), 70, da.zeta0.item()))
+        # print(fuga_utils.z0(da.TI.item(), 70, da.zeta0.item()))
         deficit = FugaDeficit(
             tfp +
             f"fuga/2MW/multilut/LUTs_Zeta0={da.zeta0.item():4.2e}_16_32_D80_zhub70_zi{da.zi.item():d}_{ti}_UL_nx128_ny128_dx20.0_dy5.0.nc",
@@ -484,6 +484,7 @@ def test_fuga_wake_radius(yaw):
     du = 10 - sim_res.flow_map(XYGrid(x=500, y=y)).WS_eff.squeeze()
     wake_radius = wfm.wake_deficitModel.wake_radius(dw_ijlk=np.array([500])[na, :, na, na], D_src_il=wts.diameter([0])[:, na],
                                                     h_ilk=wts.hub_height([0])[:, na, na],
+                                                    type_il=np.array([0, 0, 0, 0, 0])[:, na],
                                                     TI_ilk=np.array([0.1])[:, na, na]).squeeze()
 
     def gauss(x, *p):

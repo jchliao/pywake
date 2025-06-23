@@ -424,7 +424,7 @@ def test_with_weighted_sum(model):
             wfm = All2AllIterative(UniformSite(), V80(), BastankhahGaussianDeficit(rotorAvgModel=model()),
                                    superpositionModel=WeightedSum())
             aep = wfm([0, 500], [0, 0]).aep()
-            print(aep.values.sum())
+            # print(aep.values.sum())
     else:
         with pytest.raises(AssertionError, match='WeightedSum and CumulativeWakeSum only work with NodeRotorAvgModel-based rotor average models'):
             wfm = All2AllIterative(UniformSite(), V80(), BastankhahGaussianDeficit(),

@@ -310,8 +310,8 @@ def flow_map_j_wd_chunks():
     t_j = timeit(sim_res.flow_map, verbose=1)(XYGrid(x=np.linspace(-100, 2000, 2), y=np.linspace(-500, 500, 100)))
     t_wd = timeit(sim_res.flow_map, verbose=1)(XYGrid(x=np.linspace(-100, 2000, 64), y=np.linspace(-500, 500, 100)),
                                                wd=np.arange(10))
-    print(np.mean(t_all[1]) / np.mean(t_j[1]))
-    print(np.mean(t_all[1]) / np.mean(t_wd[1]))
+    # print(np.mean(t_all[1]) / np.mean(t_j[1]))
+    # print(np.mean(t_all[1]) / np.mean(t_wd[1]))
 
 
 def test_aep_map():
@@ -452,7 +452,6 @@ def test_wt_dependent_WS():
 def test_IJLK():
     class MyWakeModel(NoWakeDeficit):
         def calc_deficit(self, WS_ilk, dw_ijlk, IJLK, **_):
-            print(IJLK)
             assert IJLK in [(2, 2, 3, 1), (2, 100, 3, 1)]
             return NoWakeDeficit.calc_deficit(self, WS_ilk, dw_ijlk, **_)
 
