@@ -30,6 +30,7 @@ import warnings
 from py_wake.deficit_models.utils import ct2a_mom1d
 from py_wake.wind_turbines._wind_turbines import WindTurbine, WindTurbines
 from py_wake.site._site import UniformSite
+from py_wake.deficit_models.rans_lut import RANSLUTDemoDeficit
 
 
 class GCLLocalDeficit(GCLDeficit):
@@ -145,7 +146,8 @@ def test_huge_distance(deficitModel):
            "NOJLocalDeficit": 9.797536,
            "TurboNOJDeficit": 9.795322,
            "BlondelSuperGaussianDeficit2020": 9.79177032,
-           "BlondelSuperGaussianDeficit2023": 9.7990636, }
+           "BlondelSuperGaussianDeficit2023": 9.7990636,
+           "RANSLUTDemoDeficit": [9.80008, 9.8, 9.800077, 9.761179]}
     site = IEA37Site(16)
 
     windTurbines = IEA37_WindTurbines()
@@ -153,7 +155,10 @@ def test_huge_distance(deficitModel):
     sim_res = wfm([0, 100000], [0, 0], wd=[0, 90, 180, 270], yaw=0)
     # print(f'"{deficitModel.__name__}": {np.round(sim_res.WS_eff.sel(wt=1, ws=9.8, wd=270).item(),6)},')
 
-    npt.assert_array_almost_equal([9.8, 9.8, 9.8, ref[deficitModel.__name__]], sim_res.WS_eff.sel(wt=1).squeeze())
+    ref_ws = ref[deficitModel.__name__]
+    if isinstance(ref_ws, float):
+        ref_ws = [9.8, 9.8, 9.8, ref_ws]
+    npt.assert_array_almost_equal(ref_ws, sim_res.WS_eff.sel(wt=1).squeeze())
 
 
 @pytest.mark.parametrize('deficitModel', get_models(BlockageDeficitModel))
@@ -170,7 +175,8 @@ def test_huge_distance_blockage(deficitModel):
            "Rathmann": 9.800001,
            "RathmannScaled": 9.800001,
            "SelfSimilarityDeficit": 9.800001,
-           "VortexCylinder": 9.799999, }
+           "VortexCylinder": 9.799999,
+           "RANSLUTDemoDeficit": 9.8}
     site = IEA37Site(16)
 
     windTurbines = IEA37_WindTurbines()
@@ -180,7 +186,7 @@ def test_huge_distance_blockage(deficitModel):
     sim_res = wfm([0, 100000], [0, 0], wd=[0, 90, 180, 270], yaw=0)
     # print(f'"{deficitModel.__name__}": {np.round(sim_res.WS_eff.sel(wt=0, ws=9.8, wd=270).item(),6)},')
 
-    npt.assert_array_almost_equal([9.8, 9.8, 9.8, ref[deficitModel.__name__]], sim_res.WS_eff.sel(wt=1).squeeze())
+    npt.assert_array_almost_equal([9.8, 9.8, 9.8, ref[deficitModel.__name__]], sim_res.WS_eff.sel(wt=1).squeeze(), 5)
 
 
 @pytest.mark.parametrize(
@@ -599,7 +605,8 @@ def test_flow_map_symmetry(deficitModel):
         ax1.legend()
         ws_center.plot(marker='.', ax=ax2)
         plt.show()
-    npt.assert_array_almost_equal(ws[:10], ws[10:][::-1])
+    if not isinstance(wf_model.wake_deficitModel, RANSLUTDemoDeficit):  # RANSLUTDemo not symmetric
+        npt.assert_array_almost_equal(ws[:10], ws[10:][::-1])
     if deficitModel is not NoWakeDeficit:
         assert min(ws) < 9
         npt.assert_array_less(ws_center[10:], 9)

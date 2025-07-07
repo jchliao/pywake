@@ -41,6 +41,7 @@ from py_wake.deficit_models.vortexdipole import VortexDipole
 from py_wake.deficit_models.rankinehalfbody import RankineHalfBody
 from py_wake.deficit_models.rathmann import Rathmann, RathmannScaled
 from py_wake.deficit_models.vortexcylinder import VortexCylinder
+from py_wake.deficit_models.rans_lut import RANSLUTDemoDeficit
 
 
 WindFarmModel.verbose = False
@@ -594,7 +595,8 @@ def test_PropagateUpDownIterative_wake_deficitModels(wake_deficitModel):
 
     x = np.array([0, 400, 800, 800])
     y = [0, 0, 100, -200]
-    npt.assert_array_almost_equal(pudi(x, y, wd=270).WS_eff, all2all(x, y, wd=270).WS_eff, 5)
+    tol = {RANSLUTDemoDeficit: 3}.get(wake_deficitModel, 6)
+    npt.assert_array_almost_equal(pudi(x, y, wd=270).WS_eff, all2all(x, y, wd=270).WS_eff, tol)
 
 
 @pytest.mark.parametrize('blockage_deficitModel', get_models(BlockageDeficitModel))

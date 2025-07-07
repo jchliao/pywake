@@ -163,6 +163,7 @@ def get_exclude_dict():
     from py_wake.deficit_models.deficit_model import ConvectionDeficitModel, WakeDeficitModel, \
         BlockageDeficitModel
     from py_wake.deficit_models.deficit_model import XRLUTDeficitModel
+    from py_wake.deficit_models.rans_lut import RANSLUTDeficit
     from py_wake.rotor_avg_models.rotor_avg_model import RotorAvgModel, NodeRotorAvgModel
     from py_wake.wind_farm_models.engineering_models import EngineeringWindFarmModel, PropagateDownwind
     from py_wake.deflection_models.deflection_model import DeflectionIntegrator
@@ -170,19 +171,21 @@ def get_exclude_dict():
     from py_wake.superposition_models import LinearSum
     from py_wake.deficit_models.noj import NOJDeficit
     from py_wake.turbulence_models.turbulence_model import XRLUTTurbulenceModel
+    from py_wake.turbulence_models.rans_lut_turb import RANSLUTTurbulence
     from py_wake.ground_models.ground_models import NoGround
     from py_wake.site.jit_streamline_distance import JITStreamlineDistance
     return {
         "WindFarmModel": ([EngineeringWindFarmModel], [], PropagateDownwind),
         "EngineeringWindFarmModel": ([], [], PropagateDownwind),
-        "DeficitModel": ([ConvectionDeficitModel, BlockageDeficitModel, WakeDeficitModel, XRLUTDeficitModel],
+        "DeficitModel": ([ConvectionDeficitModel, BlockageDeficitModel, WakeDeficitModel, XRLUTDeficitModel,
+                          RANSLUTDeficit],
                          [RotorAvgModel], NOJDeficit),
-        "WakeDeficitModel": ([ConvectionDeficitModel, XRLUTDeficitModel], [RotorAvgModel], NOJDeficit),
+        "WakeDeficitModel": ([ConvectionDeficitModel, XRLUTDeficitModel, RANSLUTDeficit], [RotorAvgModel], NOJDeficit),
         "RotorAvgModel": ([NodeRotorAvgModel], [], None),
         "SuperpositionModel": ([], [], LinearSum),
-        "BlockageDeficitModel": ([XRLUTDeficitModel], [], None),
+        "BlockageDeficitModel": ([XRLUTDeficitModel, RANSLUTDeficit], [], None),
         "DeflectionModel": ([DeflectionIntegrator], [], None),
-        "TurbulenceModel": ([XRLUTTurbulenceModel], [], None),
+        "TurbulenceModel": ([XRLUTTurbulenceModel, RANSLUTTurbulence], [], None),
         "AddedTurbulenceSuperpositionModel": ([], [], None),
         "GroundModel": ([], [], NoGround),
         "Shear": ([], [], None),

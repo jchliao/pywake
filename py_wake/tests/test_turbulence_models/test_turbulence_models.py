@@ -14,6 +14,7 @@ from py_wake.tests import npt
 from py_wake.tests.test_deficit_models.test_noj import NibeA0
 from py_wake.turbulence_models.stf import STF2005TurbulenceModel, STF2017TurbulenceModel, IECWeight
 from py_wake.turbulence_models.turbulence_model import TurbulenceModel, XRLUTTurbulenceModel
+from py_wake.turbulence_models.rans_lut_turb import RANSLUTTurbulence
 from py_wake.wind_farm_models.engineering_models import PropagateDownwind, All2AllIterative
 from py_wake.turbulence_models.gcl_turb import GCLTurbulence
 import matplotlib.pyplot as plt
@@ -201,7 +202,11 @@ def test_turbulence_models_upstream(turbulenceModel):
     kwargs = {'x': [0, 0, 500, 500], 'y': [0, 500, 0, 500], 'wd': [0], 'ws': [8]}
 
     fm = wfm(**kwargs).flow_map()
-    assert np.all(fm.TI_eff.isel(y=(fm.y > 500)) == 0.075)
+    if isinstance(wfm.turbulenceModel, RANSLUTTurbulence):
+        # RANSLUT has added ti upstream too
+        npt.assert_allclose(fm.TI_eff.isel(y=(fm.y > 600)), 0.075, atol=0.001)
+    else:
+        assert np.all(fm.TI_eff.isel(y=(fm.y > 500)) == 0.075)
     if 0:
         fm.plot_ti_map()
         plt.show()

@@ -91,7 +91,8 @@ def test_GaussianOverlapAvgModel_blockage(blockageDeficitModel):
     if blockageDeficitModel is None:
         return
     wfm = All2AllIterative(UniformSite(), V80(), BastankhahGaussianDeficit(),
-                           blockage_deficitModel=blockageDeficitModel(rotorAvgModel=GaussianOverlapAvgModel()))
+                           blockage_deficitModel=blockageDeficitModel(rotorAvgModel=GaussianOverlapAvgModel()),
+                           turbulenceModel=CrespoHernandez())
     with pytest.raises(AttributeError, match=f"'{blockageDeficitModel.__name__}' has no attribute 'sigma_ijlk'"):
         wfm([0, 1000], [0, 0], yaw=0)
 
