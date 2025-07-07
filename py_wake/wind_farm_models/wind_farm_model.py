@@ -836,14 +836,15 @@ def main():
     if __name__ == '__main__':
         from py_wake.examples.data.iea37 import IEA37Site, IEA37_WindTurbines
         from py_wake import IEA37SimpleBastankhahGaussian
-
+        import warnings
         import matplotlib.pyplot as plt
 
         site = IEA37Site(16)
         x, y = site.initial_position.T
         windTurbines = IEA37_WindTurbines()
-
-        wind_farm_model = IEA37SimpleBastankhahGaussian(site, windTurbines)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'The .* model is not representative of the setup used in the literature')
+            wind_farm_model = IEA37SimpleBastankhahGaussian(site, windTurbines)
         simulation_result = wind_farm_model(x, y)
         fm = simulation_result.flow_map(wd=30)
         fm.plot_wake_map()

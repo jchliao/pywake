@@ -309,7 +309,8 @@ Cm2 = -19.3
 
 def phi(zeta):
     zeta = np.atleast_1d(zeta)
-    return np.where(zeta <= 0, (1 + Cm2 * zeta)**-.25, 1 + Cm1 * zeta)
+    e = np.where((zeta <= 0), -.25, 1)  # avoid warning when Cm2*zeta<-1
+    return np.where(zeta <= 0, (1 + Cm2 * zeta)**e, 1 + Cm1 * zeta)
 
 
 def psi(zeta, unstable=''):

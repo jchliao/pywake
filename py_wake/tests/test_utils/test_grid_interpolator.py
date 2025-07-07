@@ -163,7 +163,7 @@ def test_EqDistRegGrid2DInterpolator_bound():
     y = [200, 300, 400, 500]
     v = np.arange(12).reshape(3, 4)
     interp = EqDistRegGrid2DInterpolator(x, y, v)
-    npt.assert_array_equal(interp(np.array([6, 18]), np.array([200, 500])), [0, 11])
+    npt.assert_array_equal(interp(np.array([6., 18]), np.array([200, 500])), [0, 11])
 
 
 def compare_speed():

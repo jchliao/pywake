@@ -16,13 +16,17 @@ from py_wake.utils.layouts import farm_area
 from py_wake.utils import fuga_utils
 from py_wake.tests import npt
 import os
+import warnings
 
 
 class CorrectionFactorCalibrated():
     def __init__(self):
         import joblib
-        self.PolynomialFeature_model = joblib.load(os.path.dirname(__file__) + '/PolynomialFeature_model')
-        self.Regression_model = joblib.load(os.path.dirname(__file__) + '/Regression_model')
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'Trying to unpickle estimator LinearRegression from version')
+            warnings.filterwarnings('ignore', 'Trying to unpickle estimator PolynomialFeatures from version')
+            self.PolynomialFeature_model = joblib.load(os.path.dirname(__file__) + '/PolynomialFeature_model')
+            self.Regression_model = joblib.load(os.path.dirname(__file__) + '/Regression_model')
 
     def __call__(self, Uh0, sr, Nturb):
         a_input = [[Uh0, sr, np.sqrt(Nturb)]]

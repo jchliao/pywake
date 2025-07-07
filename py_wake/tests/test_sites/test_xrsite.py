@@ -203,7 +203,6 @@ def test_complex_grid_local_wind(complex_grid_site):
     y = np.arange(5)
     x = y * 2
     X, Y = np.meshgrid(x, y)
-    x_i, y_i = X.flatten(), Y.flatten()
 
     wdir_lst = np.arange(0, 360, 90)
     wsp_lst = np.arange(3, 6)
@@ -225,8 +224,9 @@ def test_complex_grid_local_wind(complex_grid_site):
                                          [0.0078508, 0.01177761, 0.01557493],
                                          [0.0105829, 0.01576518, 0.02066746],
                                          [0.01079997, 0.01656828, 0.02257487]])
-
-    wfm = BastankhahGaussian(site, V80())
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '.* model is not representative of the setup')
+        wfm = BastankhahGaussian(site, V80())
     wfm([5], [3])
 
 
@@ -335,7 +335,7 @@ def test_wrong_height():
 
     wdir_lst = np.arange(0, 360, 90)
     wsp_lst = np.arange(3, 6)
-    lw = site.local_wind(x=x_i, y=y_i, h=100, wd=wdir_lst, ws=wsp_lst)
+    site.local_wind(x=x_i, y=y_i, h=100, wd=wdir_lst, ws=wsp_lst)
 
 
 def test_wd_independent_site():
@@ -430,7 +430,9 @@ def test_from_flow_box_2wt():
     windTurbines = V80()
 
     # simulate current and neighbour wt
-    wfm = BastankhahGaussian(site, windTurbines)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '.* model is not representative of the setup')
+        wfm = BastankhahGaussian(site, windTurbines)
     wd = np.arange(30)
     sim_res = wfm([0, 0], [0, 500], wd=wd)
     ref_aep = sim_res.aep().sel(wt=0)
@@ -447,7 +449,9 @@ def test_from_flow_box_2wt():
     site = XRSite.from_flow_box(box)
 
     # Simujlate current wt and compare aep
-    wfm = BastankhahGaussian(site, windTurbines)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '.* model is not representative of the setup')
+        wfm = BastankhahGaussian(site, windTurbines)
     sim_res = wfm(wt_x, wt_y, wd=wd)
     aep = sim_res.aep()
 
@@ -479,7 +483,7 @@ def test_neighbour_farm_speed():
     # Consider wd=270 +/- 30 deg only
     wd_lst = np.arange(240, 301)
 
-    sim_res, t = timeit(wf_model, verbose=False)(all_x, all_y, type=types, ws=9.8, wd=wd_lst)
+    sim_res, _ = timeit(wf_model, verbose=False)(all_x, all_y, type=types, ws=9.8, wd=wd_lst)
     if 1:
         ext = 100
         flow_box = wf_model(neighbour_x, neighbour_y, wd=wd_lst).flow_box(
@@ -515,7 +519,7 @@ def test_from_flowbox():
 
     flow_box = sim_res.flow_box(x, y, V80()._hub_heights[0])
 
-    wake_site = XRSite.from_flow_box(flow_box)
+    XRSite.from_flow_box(flow_box)
 
 
 @pytest.mark.parametrize('h,wd,ws,h_i,wd_l,ws_k', [
@@ -694,8 +698,6 @@ def test_from_pwc_point(method_speedup, ref, pywasp_pwc_point):
                    1., 0.93284169, 0.96370699, 1., 1.08984822,
                    1.06002303, 1., 0.93179214]])
     )[ref]
-
-    sector = np.linspace(0.0, 330.0, 12)
 
     x = np.array([263655.0, 263891.1, 264022.2])
     y = np.array([6506601.0, 6506394.0, 6506124.0])

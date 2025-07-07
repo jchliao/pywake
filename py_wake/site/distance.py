@@ -54,7 +54,6 @@ class StraightDistance():
                             [dst_y - i / f, dst_y + np.cos(theta) * hcw_ijlk[i, j, l, 0] - i / f], '--', color=c)
             plt.plot(self.src_x_ilk[:, 0, 0], self.src_y_ilk[:, 0, 0], 'k2')
             ax.axis('equal')
-            ax.legend()
 
     def setup(self, src_x_ilk, src_y_ilk, src_h_ilk, src_z_ilk, dst_xyhz_j=None):
         # ensure 3d and

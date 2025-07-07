@@ -24,6 +24,7 @@ from py_wake.turbulence_models.turbulence_model import TurbulenceModel
 from py_wake.deficit_models.fuga import FugaMultiLUTDeficit
 from py_wake.deficit_models.noj import NOJ
 from py_wake.deficit_models.utils import ct2a_mom1d
+import warnings
 from py_wake.deficit_models.rans_lut import RANSLUTDemoDeficit
 
 
@@ -433,7 +434,9 @@ def test_with_weighted_sum(model):
 
 
 def test_WSPowerRotorAvgModel():
-    wfm = BastankhahGaussian(UniformSite(), V80())
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '.* model is not representative of the setup')
+        wfm = BastankhahGaussian(UniformSite(), V80())
     x, y = [0, 200], [0, 0]
     y_g = [-40, 0, 40]
     if 0:
@@ -444,7 +447,9 @@ def test_WSPowerRotorAvgModel():
     ws_eff_ref = np.mean(ws_eff_p**2)**(1 / 2)
 
     rotorAvgModel = WSPowerRotorAvg(GridRotorAvg(nodes_x=[-1, 0, 1], nodes_y=[0, 0, 0]), alpha=2)
-    wfm = BastankhahGaussian(UniformSite(), V80(), rotorAvgModel=rotorAvgModel)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '.* model is not representative of the setup')
+        wfm = BastankhahGaussian(UniformSite(), V80(), rotorAvgModel=rotorAvgModel)
     npt.assert_almost_equal(wfm(x, y, wd=270).WS_eff.sel(wt=1).squeeze(), ws_eff_ref)
 
 

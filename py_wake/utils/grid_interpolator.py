@@ -144,7 +144,6 @@ class EqDistRegGrid2DInterpolator():
 
     def __call__(self, x, y, mode='valid'):
         xp, yp = x, y
-
         xif, xi0 = gradients.modf((xp - self.x0) / self.dx)
         yif, yi0 = gradients.modf((yp - self.y0) / self.dy)
 
@@ -171,6 +170,12 @@ class EqDistRegGrid2DInterpolator():
         if isinstance(xp, ArrayBox) or isinstance(yp, ArrayBox):
             z = z0 + (z1 - z0) * yif
         else:
-            z = np.full(xp.shape, np.nan, dtype=xp.dtype)
+            dtype = float
+            if np.iscomplexobj(xp):
+                dtype = xp.dtype
+            if np.iscomplexobj(yp):
+                dtype = yp.dtype
+
+            z = np.full(xp.shape, np.nan, dtype=dtype)
             z[valid] = z0 + (z1 - z0) * yif
         return z

@@ -201,11 +201,13 @@ def plot_gradients(f, dfdx, x, label, step=1, ax=None):
     import matplotlib.pyplot as plt
     global color_dict
     if ax is None:
-        ax = plt
+        ax = plt.gca()
     c = color_dict.get(label, None)
     step = np.array([-step, 0, step])
 
-    c = ax.plot(x + step, f + step * dfdx, ".-", color=c, label=('', label)[c is None])[0].get_color()
+    if label in ax.get_legend_handles_labels()[1]:
+        label = ""
+    c = ax.plot(x + step, f + step * dfdx, ".-", color=c, label=label)[0].get_color()
 
     if label not in color_dict:
         color_dict[label] = c

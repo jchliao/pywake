@@ -335,7 +335,9 @@ def test_JITStreamlinesparquefictio_yz():
     x, y = site.initial_position[3].T
     wt_x = np.r_[x - 500, x, x + 500]
     wt_y = np.r_[y, y, y]
-    wfm = BastankhahGaussian(site, wt, k=0.03)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '.* model is not representative of the setup')
+        wfm = BastankhahGaussian(site, wt, k=0.03)
     wd = np.array([270])
     sim_res = wfm(wt_x, wt_y, wd=wd, ws=10)
     dw = site.distance(wd_l=wd, WD_ilk=np.repeat(wd[na, na], len(wt_x), 0))[0][:, :, 0, 0]

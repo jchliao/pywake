@@ -15,6 +15,8 @@ from py_wake.site.xrsite import XRSite
 import shutil
 from py_wake.wind_turbines._wind_turbines import WindTurbine
 from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
+import contextlib
+import io
 
 
 @pytest.fixture(autouse=True)
@@ -228,7 +230,8 @@ def test_speed_up_using_pickle_wrong_pkl():
     if os.path.exists(pkl_fn):
         os.remove(pkl_fn)
     shutil.copy(__file__, pkl_fn)
-    site = WaspGridSite.from_wasp_grd(ParqueFicticio_path, speedup_using_pickle=True)
+    with contextlib.redirect_stdout(io.StringIO()):
+        site = WaspGridSite.from_wasp_grd(ParqueFicticio_path, speedup_using_pickle=True)
 
 
 def test_one_layer():

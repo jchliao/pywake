@@ -3,7 +3,6 @@ import warnings
 import pytest
 
 import matplotlib.pyplot as plt
-from py_wake import NOJ
 from py_wake import np
 from py_wake.deficit_models.gaussian import IEA37SimpleBastankhahGaussianDeficit
 from py_wake.examples.data import hornsrev1
@@ -17,6 +16,7 @@ from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
 from py_wake.wind_turbines.wind_turbines_deprecated import DeprecatedWindTurbines, DeprecatedOneTypeWindTurbines
 from numpy import newaxis as na
 from py_wake.deficit_models.utils import ct2a_mom1d
+from py_wake.deficit_models.noj import NOJ
 
 
 WindFarmModel.verbose = False

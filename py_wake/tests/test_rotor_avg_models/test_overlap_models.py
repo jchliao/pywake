@@ -27,8 +27,10 @@ from py_wake.ground_models.ground_models import Mirror
 def test_overlapping_area_factor_shapes():
     site = Hornsrev1Site()
     windTurbines = IEA37_WindTurbines()
-    wfm = ZongGaussian(site, windTurbines, rotorAvgModel=EqGridRotorAvg(9),
-                       turbulenceModel=CrespoHernandez())
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '.* model is not representative of the setup')
+        wfm = ZongGaussian(site, windTurbines, rotorAvgModel=EqGridRotorAvg(9),
+                           turbulenceModel=CrespoHernandez())
     wfm([0, 1000], [0, 0])
 
 

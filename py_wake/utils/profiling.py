@@ -90,11 +90,8 @@ def compare_lineprofile(lp1, lp2, include_gt_pct=None):  # pragma: no cover
                                   lines[lineno1 - 1]))
         print(template % ("", "", "--------", "--------", "", "", "----", ""))
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', r'divide by zero encountered in double_scalars')
-            print(
-                template %
-                ("", "", total1 / 1e6, total2 / 1e6, "", "", "%5.1f" %
-                 ((total2 - total1) / total1 * 100), ""))
+            print(template % ("", "", total1 / 1e6, total2 / 1e6, "", "", "%5.1f" %
+                              ((total2 - total1) / total1 * 100), ""))
 
 
 def get_memory_usage():

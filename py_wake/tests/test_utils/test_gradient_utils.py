@@ -256,7 +256,9 @@ def test_gradients():
 def test_plot_gradients():
     x = np.arange(-3, 4, .1)
     plt.plot(x, x**2)
-    plot_gradients(1.5**2, 3, 1.5, "test", 1)
+    for x in [-2, 1.5]:
+        plot_gradients(x**2, 2 * x, x, "test", 1)
+
     if 0:
         plt.show()
     plt.close('all')

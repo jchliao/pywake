@@ -2,6 +2,7 @@ import numpy as np
 from py_wake.site.distance import StraightDistance
 from numpy import newaxis as na
 from py_wake.utils.grid_interpolator import GridInterpolator
+import warnings
 
 
 class ISONoiseModel:
@@ -151,7 +152,8 @@ class ISONoiseModel:
         F = self.freqs / p_s  # frequency normalised by atmospheric pressure
         F2 = F**2
         #
-        F_rO = 1.0 / p_s0 * (24.0 + 4.04e4 * h * (0.02 + h) / (0.391 + h))  # relaxation frequency of oxygen normalised by atmospheric pressure
+        # relaxation frequency of oxygen normalised by atmospheric pressure
+        F_rO = 1.0 / p_s0 * (24.0 + 4.04e4 * h * (0.02 + h) / (0.391 + h))
         F_rN = 1.0 / p_s0 * (T_0 / T)**(0.5) * (9.0 + 2.8e2 * h *
                                                 np.exp(-4.17 * ((T_0 / T)**(1.0 / 3.0) - 1.0)))  # relaxation frequency of nitrogen normalised by atmospheric pressure
         #
@@ -235,7 +237,9 @@ def main():
         from py_wake.utils.plotting import setup_plot
 
         wt = SWT_DD_142_4100()
-        wfm = ZongGaussian(UniformSite(), wt, turbulenceModel=CrespoHernandez())
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'The .* model is not representative of the setup used in the literature')
+            wfm = ZongGaussian(UniformSite(), wt, turbulenceModel=CrespoHernandez())
         x, y = rectangle(5, 5, 5 * wt.diameter())
         sim_res = wfm(x, y, wd=270, ws=8, mode=0)
         nm = sim_res.noise_model()
@@ -245,7 +249,8 @@ def main():
         ax1.plot([x[0]], [1000], '.', label='Receiver 1')
         ax1.plot([x[-1]], [1000], '.', label='Receiver 2')
         ax1.legend()
-        total_sp_jlk, spl_jlkf = nm(rec_x=[x[0], x[-1]], rec_y=[1000, 1000], rec_h=2, patm=101325, Temp=20, RHum=80, ground_type=0.0)
+        total_sp_jlk, spl_jlkf = nm(rec_x=[x[0], x[-1]], rec_y=[1000, 1000], rec_h=2,
+                                    patm=101325, Temp=20, RHum=80, ground_type=0.0)
         ax2.plot(nm.freqs, spl_jlkf[0, 0, 0], label='Receiver 1')
         ax2.plot(nm.freqs, spl_jlkf[1, 0, 0], label='Receiver 2')
         setup_plot(xlabel='Frequency [Hz]', ylabel='Sound pressure level [dB]', ax=ax2)

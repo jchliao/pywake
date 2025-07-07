@@ -111,12 +111,12 @@ class GCLLocalDeficit(GCLDeficit):
 def test_IEA37_ex16(deficitModel, aep_ref):
     site = IEA37Site(16)
     x, y = site.initial_position.T
-    windTurbines = IEA37_WindTurbines()
+    wts = IEA37_WindTurbines()
     superpositionModel = [SquaredSum, LinearSum][isinstance(deficitModel, FugaMultiLUTDeficit)]
-    wf_model = PropagateDownwind(site, windTurbines, wake_deficitModel=deficitModel,
-                                 superpositionModel=superpositionModel(), turbulenceModel=GCLTurbulence())
+    wfm = PropagateDownwind(site, wts, wake_deficitModel=deficitModel,
+                            superpositionModel=superpositionModel(), turbulenceModel=GCLTurbulence())
 
-    aep_ilk = wf_model(x, y, wd=np.arange(0, 360, 22.5), ws=[9.8]).aep_ilk(normalize_probabilities=True)
+    aep_ilk = wfm(x, y, wd=np.arange(0, 360, 22.5), ws=[9.8]).aep_ilk(normalize_probabilities=True)
     aep_MW_l = aep_ilk.sum((0, 2)) * 1000
 
     # check if ref is reasonable
@@ -513,7 +513,7 @@ def test_IEA37_ex16_windFarmModel(windFarmModel, aep_ref):
     x, y = site.initial_position.T
     windTurbines = IEA37_WindTurbines()
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=DeprecationWarning)
+        warnings.filterwarnings('ignore', message=r'.*model is not representative of the setup')
         wf_model = windFarmModel(site, windTurbines, turbulenceModel=GCLTurbulence())
     wf_model.superpositionModel = [SquaredSum(), LinearSum()][isinstance(
         wf_model.wake_deficitModel, FugaMultiLUTDeficit)]

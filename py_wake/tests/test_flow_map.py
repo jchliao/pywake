@@ -452,6 +452,7 @@ def test_wt_dependent_WS():
 def test_IJLK():
     class MyWakeModel(NoWakeDeficit):
         def calc_deficit(self, WS_ilk, dw_ijlk, IJLK, **_):
+            # print(IJLK)
             assert IJLK in [(2, 2, 3, 1), (2, 100, 3, 1)]
             return NoWakeDeficit.calc_deficit(self, WS_ilk, dw_ijlk, **_)
 

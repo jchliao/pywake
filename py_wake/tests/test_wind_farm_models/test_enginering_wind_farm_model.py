@@ -13,7 +13,7 @@ from py_wake.deficit_models.gaussian import BastankhahGaussianDeficit
 from py_wake.deficit_models.gaussian import IEA37SimpleBastankhahGaussianDeficit, BastankhahGaussian
 from py_wake.deficit_models.no_wake import NoWakeDeficit
 from py_wake.deficit_models.noj import NOJDeficit
-from py_wake.deficit_models.selfsimilarity import SelfSimilarityDeficit, SelfSimilarityDeficit2020
+from py_wake.deficit_models.selfsimilarity import SelfSimilarityDeficit
 from py_wake.deficit_models.utils import ct2a_mom1d
 from py_wake.deflection_models.jimenez import JimenezWakeDeflection
 from py_wake.examples.data.hornsrev1 import HornsrevV80, Hornsrev1Site, wt_x, wt_y, V80
@@ -73,8 +73,9 @@ def test_wec():
     wts = HornsrevV80()
 
     site = UniformSite([1, 0, 0, 0], ti=0.075)
-
-    wfm = BastankhahGaussian(site, wts, ct2a=ct2a_mom1d)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '.* model is not representative of the setup')
+        wfm = BastankhahGaussian(site, wts, ct2a=ct2a_mom1d)
     x_j = np.linspace(-1500, 1500, 500)
     y_j = np.linspace(-1500, 1500, 300)
 

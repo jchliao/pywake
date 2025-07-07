@@ -62,7 +62,9 @@ def check_gradients(wfm, name, wt_x=[-1300, -650, 0], wt_y=[0, 0, 0], wt_h=[110,
         npt.assert_almost_equal(dOutputdy_lst[0], dOutputdy_lst[1], fd_decimal)
         npt.assert_almost_equal(dOutputdy_lst[1], dOutputdy_lst[2], ad_decimal)
 
-        dOutputdh_lst = [grad(output_func, True, 2)(wt_x, wt_y, hp, **kwargs)[2] for grad in [fdstep, cs, autograd]]
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'Output seems independent of input')
+            dOutputdh_lst = [grad(output_func, True, 2)(wt_x, wt_y, hp, **kwargs)[2] for grad in [fdstep, cs, autograd]]
         npt.assert_almost_equal(dOutputdh_lst[0], dOutputdh_lst[1], fd_decimal)
         npt.assert_almost_equal(dOutputdh_lst[1], dOutputdh_lst[2], ad_decimal)
 

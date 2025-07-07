@@ -214,7 +214,9 @@ def test_aep_vs_aep():
 
     windTurbines = V80()
     site = Hornsrev1Site()
-    wf_model = BastankhahGaussian(site, windTurbines)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'The BastankhahGaussian model is not representative of the setup')
+        wf_model = BastankhahGaussian(site, windTurbines)
 
     npt.assert_array_almost_equal(wf_model(wt16_x, wt16_y).aep(with_wake_loss=False).values.sum(),
                                   wf_model.aep(wt16_x, wt16_y, with_wake_loss=False))
