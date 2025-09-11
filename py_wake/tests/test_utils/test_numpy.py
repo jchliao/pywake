@@ -1,16 +1,23 @@
 import os
+import warnings
 
 from autograd.numpy.numpy_boxes import ArrayBox
 from numpy import newaxis as na
 import pytest
 
+import matplotlib.pyplot as plt
 from py_wake import np
 from py_wake.deficit_models.deficit_model import WakeDeficitModel, BlockageDeficitModel
 from py_wake.deficit_models.gaussian import IEA37SimpleBastankhahGaussianDeficit
+from py_wake.deficit_models.noj import NOJDeficit
 from py_wake.deflection_models.deflection_model import DeflectionModel
 from py_wake.examples.data.ParqueFicticio._parque_ficticio import ParqueFicticioSite
+from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
 from py_wake.examples.data.iea37._iea37 import IEA37Site, IEA37_WindTurbines
+from py_wake.flow_map import XYGrid
 from py_wake.ground_models.ground_models import GroundModel
+from py_wake.rotor_avg_models.area_overlap_model import AreaOverlapAvgModel
+from py_wake.rotor_avg_models.gaussian_overlap_model import GaussianOverlapAvgModel
 from py_wake.rotor_avg_models.rotor_avg_model import RotorAvgModel
 from py_wake.site._site import Site
 from py_wake.site.distance import StraightDistance
@@ -24,15 +31,6 @@ from py_wake.utils.model_utils import get_models
 from py_wake.utils.numpy_utils import Numpy32
 from py_wake.utils.profiling import profileit
 from py_wake.wind_farm_models.engineering_models import PropagateDownwind, All2AllIterative, EngineeringWindFarmModel
-from py_wake.wind_farm_models.wind_farm_model import WindFarmModel
-from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
-
-from py_wake.rotor_avg_models.gaussian_overlap_model import GaussianOverlapAvgModel
-from py_wake.rotor_avg_models.area_overlap_model import AreaOverlapAvgModel
-from py_wake.deficit_models.noj import NOJDeficit
-import warnings
-from py_wake.flow_map import XYGrid
-import matplotlib.pyplot as plt
 
 
 @pytest.mark.parametrize('v,dtype,dtype32', [(5., float, np.float32),

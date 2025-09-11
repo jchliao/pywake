@@ -274,7 +274,7 @@ def test_wd_dependent_wt_positions():
                                                          [0, -100, 0]], wd=[0, 90, 180], WS=[[[5]], [[10]]])
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', UserWarning)
-        ws_eff = sim_res.flow_map().WS_eff.interp(
+        ws_eff = sim_res.flow_map(wd=sim_res.wd, ws=sim_res.ws).WS_eff.interp(
             x=('z', [-100, -300, 100]), y=('z', [-300, 100, 300]), wd=('z', [0, 90, 180])).squeeze().values
     npt.assert_array_equal(ws_eff[0], ws_eff)
     if 0:
@@ -286,7 +286,7 @@ def test_wd_dependent_wt_positions():
 def test_ws_dependent_wt_positions():
     wfm = IEA37CaseStudy1(16)
     sim_res = wfm(x=[[[0, 0, 0]], [[100, 200, 300]]], y=np.zeros((2, 1, 3)), wd=[270], ws=[8, 9, 10])
-    ws_eff = sim_res.flow_map().WS_eff.interp(x=400, y=0).squeeze()
+    ws_eff = sim_res.flow_map(wd=sim_res.wd, ws=sim_res.ws).WS_eff.interp(x=400, y=0).squeeze()
     npt.assert_array_almost_equal(ws_eff, [4.06513, 4.117601, 3.830711])
     if 0:
         for ws, ax in zip(sim_res.ws, plt.subplots(3, 1, figsize=(4, 10))[1]):

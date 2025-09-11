@@ -15,6 +15,8 @@ from py_wake.utils import gradients
 import warnings
 from py_wake.input_modifier_models.input_modifier_model import InputModifierModel
 from py_wake.deficit_models.no_wake import NoWakeDeficit
+from py_wake.utils.parallelization import get_map_func, get_starmap_func
+import multiprocessing
 
 
 class EngineeringWindFarmModel(WindFarmModel):
@@ -306,14 +308,11 @@ class EngineeringWindFarmModel(WindFarmModel):
                             f"The WT dependent {k} that was provided for the simulation is not available at the flow map points and therefore ignored")
         return map_arg_funcs, lw_j, wd, WD_il
 
-    def _get_flow_l(self, model_kwargs, l, wt_x_ilk, wt_y_ilk, wt_h_ilk, lw_j, wd, WD_ilk):
+    def _get_flow_l(self, model_kwargs, wt_x_ilk, wt_y_ilk, wt_h_ilk, x_j, y_j, h_j, wd, WD_ilk, WS_jlk, TI_jlk):
         wt_z_ilk = self.site.elevation(wt_x_ilk, wt_y_ilk)
-        z_j = self.site.elevation(lw_j.x, lw_j.y)
-        self.site.distance.setup(wt_x_ilk, wt_y_ilk, wt_h_ilk, wt_z_ilk, (lw_j.x, lw_j.y, lw_j.h, z_j))
+        z_j = self.site.elevation(x_j, y_j)
+        self.site.distance.setup(wt_x_ilk, wt_y_ilk, wt_h_ilk, wt_z_ilk, (x_j, y_j, h_j, z_j))
         dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(wd_l=wd, WD_ilk=WD_ilk)
-
-        WS_jlk = lw_j.WS_ilk[:, [l, slice(0, 1)][lw_j.WS_ilk.shape[1] == 1]]
-        TI_jlk = lw_j.TI_ilk[:, [l, slice(0, 1)][lw_j.TI_ilk.shape[1] == 1]]
 
         if self.wec != 1:
             hcw_ijlk = hcw_ijlk / self.wec
@@ -379,10 +378,11 @@ class EngineeringWindFarmModel(WindFarmModel):
             TI_eff_jlk = self.turbulenceModel.calc_effective_TI(TI_jlk, add_turb_ijlk)
         else:
             TI_eff_jlk = None
+        model_kwargs.clear()
         return WS_eff_jlk, TI_eff_jlk
 
-    def _aep_map(self, x_j, y_j, h_j, type_j, sim_res_data):
-        lw_j, WS_eff_jlk, _ = self._flow_map(x_j, y_j, h_j, sim_res_data)
+    def _aep_map(self, x_j, y_j, h_j, type_j, sim_res_data, max_memory_GB=1, n_cpu=1):
+        lw_j, WS_eff_jlk, _ = self._flow_map(x_j, y_j, h_j, sim_res_data, max_memory_GB=max_memory_GB, n_cpu=n_cpu)
         power_kwargs = {}
         if 'type' in (self.windTurbines.powerCtFunction.required_inputs +
                       self.windTurbines.powerCtFunction.optional_inputs):
@@ -392,29 +392,40 @@ class EngineeringWindFarmModel(WindFarmModel):
         aep_j = (power_jlk * lw_j.P_ilk).sum((1, 2))
         return aep_j * 365 * 24 * 1e-9
 
-    def _flow_map(self, x_j, y_j, h_j, sim_res_data, D_dst=0):
+    def _flow_map(self, x_j, y_j, h_j, sim_res_data, D_dst=0, max_memory_GB=1, n_cpu=1):
         """call this function via SimulationResult.flow_map"""
         arg_funcs, lw_j, wd, WD_il = self.get_map_args(x_j, y_j, h_j, sim_res_data, D_dst=D_dst)
         I, J, L, K = arg_funcs['IJLK']()
+
         if I == 0:
             return (lw_j, np.broadcast_to(lw_j.WS_ilk, (len(x_j), L, K)).astype(float),
                     np.broadcast_to(lw_j.TI_ilk, (len(x_j), L, K)).astype(float))
+        n_cpu = n_cpu or multiprocessing.cpu_count()
+        size_GB = I * J * L * K * 8 * 6 * n_cpu / 1024**3  # *6=dx_ijlk, dy_ijlk, dz_ijlk, dh_ijlk, deficit, blockage
+        wd_chunks = int(np.clip(np.ceil(size_GB / max_memory_GB), 1, L))
+        j_chunks = int(np.clip(np.ceil(size_GB / wd_chunks / max_memory_GB), 1, J))
 
-        size_gb = I * J * L * K * 8 / 1024**3
-        wd_chunks = int(np.minimum(np.maximum(int(size_gb // 1), 1), L))
-        wd_i = np.round(np.linspace(0, L, wd_chunks + 1)).astype(int)
-        l_iter = tqdm([slice(i0, i1) for i0, i1 in zip(wd_i[:-1], wd_i[1:])], disable=L <= 1 or not self.verbose,
-                      desc='Calculate flow map', unit='wd')
+        map_func = get_starmap_func(n_cpu=n_cpu, verbose=wd_chunks + j_chunks > 2 and self.verbose, desc='Calculate flow map',
+                                    unit='wd', leave=0)
         wt_x_ilk, wt_y_ilk, wt_h_ilk = [sim_res_data[k].ilk() for k in ['x', 'y', 'h']]
-        WS_eff_jlk, TI_eff_jlk = zip(*[self._get_flow_l(
-            {k: arg_funcs[k](l) for k in arg_funcs},
-            l,
-            *[(v, v[:, l])[np.shape(v)[1] == L] for v in [wt_x_ilk, wt_y_ilk, wt_h_ilk]],
-            lw_j, wd[l], WD_il[:, l])
-            for l in l_iter])
-        WS_eff_jlk = np.concatenate(WS_eff_jlk, 1)
+
+        xyh_j_lst = list(zip(*[np.array_split(x_j, j_chunks),
+                               np.array_split(y_j, j_chunks),
+                               np.array_split(h_j, j_chunks)]))
+
+        l_iter = [({k: arg_funcs[k](l) for k in arg_funcs},
+                   *[(v, v[:, slice(l[0], l[-1] + 1)])[np.shape(v)[1] == L] for v in [wt_x_ilk, wt_y_ilk, wt_h_ilk]],
+                   x_j_, y_j_, h_j_, wd[l], WD_il[:, l],
+                   lw_j.WS_ilk[:, (l, [0])[lw_j.WS_ilk.shape[1] == 1]],
+                   lw_j.TI_ilk[:, (l, [0])[lw_j.TI_ilk.shape[1] == 1]])
+                  for l in np.array_split(np.arange(L).astype(int), wd_chunks)
+                  for x_j_, y_j_, h_j_ in xyh_j_lst]
+        WS_eff_jlk, TI_eff_jlk = zip(*map_func(self._get_flow_l, l_iter))
+        WS_eff_jlk = np.concatenate([np.concatenate(WS_eff_jlk[i * j_chunks:(i + 1) * j_chunks], 0)
+                                     for i in range(wd_chunks)], 1)
         if self.turbulenceModel:
-            TI_eff_jlk = np.concatenate(TI_eff_jlk, 1)
+            TI_eff_jlk = np.concatenate([np.concatenate(TI_eff_jlk[i * j_chunks:(i + 1) * j_chunks], 0)
+                                         for i in range(wd_chunks)], 1)
         else:
             TI_eff_jlk = np.zeros_like(WS_eff_jlk) + lw_j.TI_ilk
         return lw_j, WS_eff_jlk, TI_eff_jlk

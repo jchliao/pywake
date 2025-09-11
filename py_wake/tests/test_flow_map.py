@@ -19,8 +19,6 @@ from py_wake.superposition_models import SquaredSum
 import warnings
 from py_wake.deficit_models.no_wake import NoWakeDeficit
 from py_wake.site._site import UniformSite
-from py_wake.ground_models.ground_models import Mirror
-from py_wake.deficit_models.selfsimilarity import SelfSimilarityDeficit2020
 
 
 @pytest.fixture(autouse=True)
@@ -54,8 +52,8 @@ def test_power_xylk_wt_args():
     wind_farm_model = PropagateDownwind(site, windTurbines,
                                         wake_deficitModel=IEA37SimpleBastankhahGaussianDeficit(),
                                         superpositionModel=SquaredSum())
-    simulation_result = wind_farm_model(x, y, wd=[0, 270], ws=[6, 8, 10], mode=0)
-    fm = simulation_result.flow_map(XYGrid(resolution=3))
+    sim_res = wind_farm_model(x, y, wd=[0, 270], ws=[6, 8, 10], mode=0)
+    fm = sim_res.flow_map(XYGrid(resolution=3), wd=sim_res.wd, ws=sim_res.ws)
     npt.assert_array_almost_equal(fm.power_xylk(mode=1).sum(['wd', 'ws']).isel(h=0),
                                   [[7030000., 6378864., 7029974.],
                                    [7030000., 559767., 4902029.],
@@ -314,6 +312,40 @@ def flow_map_j_wd_chunks():
     # print(np.mean(t_all[1]) / np.mean(t_wd[1]))
 
 
+def test_flow_map_point_chunks():
+    wfm = IEA37CaseStudy1(16)
+    x, y = wfm.site.initial_position.T
+
+    sim_res = wfm(x, y, wd=np.arange(0, 360, 30), ws=10)
+    # wfm.verbose = True
+
+    # j chunks
+    fm1 = sim_res.flow_map(XYGrid(resolution=500), wd=270)
+    fm2 = sim_res.flow_map(XYGrid(resolution=500), wd=270, max_memory_GB=0.005)
+    fm3 = sim_res.flow_map(XYGrid(resolution=500), wd=270, max_memory_GB=0.005, n_cpu=2)
+    npt.assert_array_equal(fm1.WS_eff, fm2.WS_eff)
+    npt.assert_array_equal(fm1.WS_eff, fm3.WS_eff)
+
+    # wd chunks
+    fm4 = sim_res.flow_map(XYGrid(resolution=50), wd=270)
+    fm5 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd)
+    fm6 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, max_memory_GB=0.002)
+    fm7 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, max_memory_GB=0.002, n_cpu=2)
+    npt.assert_array_equal(fm4.WS_eff, fm5.WS_eff.sel(wd=[270]))
+    npt.assert_array_equal(fm5.WS_eff, fm6.WS_eff)
+    npt.assert_array_equal(fm5.WS_eff, fm7.WS_eff)
+
+    # both wd and j chunks
+    fm8 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, max_memory_GB=0.0005)
+    fm9 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, max_memory_GB=0.0005, n_cpu=2)
+    npt.assert_array_equal(fm5.WS_eff, fm8.WS_eff)
+    npt.assert_array_equal(fm5.WS_eff, fm9.WS_eff)
+
+    if 0:
+        fm1.plot_wake_map()
+        plt.show()
+
+
 def test_aep_map():
     wfm = IEA37CaseStudy1(16)
     x, y = [0, 600, 1200], [0, 0, 0]  # site.initial_position[:2].T
@@ -321,7 +353,7 @@ def test_aep_map():
     sim_res = wfm(x, y)
     grid = XYGrid(x=np.linspace(-100, 2000, 50), y=np.linspace(-500, 500, 25))
     aep_map = sim_res.aep_map(grid, normalize_probabilities=True)
-    fm = sim_res.flow_map(grid)
+    fm = sim_res.flow_map(grid, wd=sim_res.wd, ws=sim_res.ws)
     npt.assert_array_almost_equal(fm.aep_xy(normalize_probabilities=True).sel(h=110), aep_map)
 
     grid = Points(x=np.linspace(-100, 2000, 50), y=np.full(50, -500), h=np.full(50, wfm.windTurbines.hub_height()))
@@ -356,7 +388,7 @@ def test_aep_map_parallel():
     grid = XYGrid(x=np.linspace(-100, 2000, 50), y=np.linspace(-500, 500, 25))
     aep_map = sim_res.aep_map(grid, normalize_probabilities=True, n_cpu=2)
 
-    fm = sim_res.flow_map(grid)
+    fm = sim_res.flow_map(grid, ws=sim_res.ws, wd=sim_res.wd)
     npt.assert_array_almost_equal(fm.aep_xy(normalize_probabilities=True).sel(h=110), aep_map)
 
     fm = sim_res.flow_map(grid, wd=[0])

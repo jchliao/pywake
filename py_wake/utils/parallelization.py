@@ -2,7 +2,7 @@ import multiprocessing
 import atexit
 import platform
 import gc
-import os
+from itertools import starmap
 
 pool_dict = {}
 
@@ -50,6 +50,30 @@ def get_pool_starmap(processes=multiprocessing.cpu_count()):
 def close_pools():  # pragma: no cover
     for k, pool in pool_dict.items():
         pool.close()
+
+
+def get_map_func(n_cpu, verbose, desc='', unit='it'):
+    n_cpu = n_cpu or multiprocessing.cpu_count()
+    if n_cpu > 1:
+        map_func = get_pool_map(n_cpu)
+    else:
+        from tqdm import tqdm
+
+        def map_func(f, iter):
+            return tqdm(map(f, iter), desc=desc, unit=unit, total=len(iter), disable=not verbose)
+    return map_func
+
+
+def get_starmap_func(n_cpu, verbose, desc='', unit='it', leave=True):
+    n_cpu = n_cpu or multiprocessing.cpu_count()
+    if n_cpu > 1:
+        map_func = get_pool_starmap(n_cpu)
+    else:
+        from tqdm import tqdm
+
+        def map_func(f, iter):
+            return starmap(f, tqdm(iter, desc=desc, unit=unit, total=len(iter), disable=not verbose, leave=leave))
+    return map_func
 
 
 atexit.register(close_pools)
