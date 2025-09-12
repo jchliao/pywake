@@ -381,8 +381,8 @@ class EngineeringWindFarmModel(WindFarmModel):
         model_kwargs.clear()
         return WS_eff_jlk, TI_eff_jlk
 
-    def _aep_map(self, x_j, y_j, h_j, type_j, sim_res_data, max_memory_GB=1, n_cpu=1):
-        lw_j, WS_eff_jlk, _ = self._flow_map(x_j, y_j, h_j, sim_res_data, max_memory_GB=max_memory_GB, n_cpu=n_cpu)
+    def _aep_map(self, x_j, y_j, h_j, type_j, sim_res_data, memory_GB=1, n_cpu=1):
+        lw_j, WS_eff_jlk, _ = self._flow_map(x_j, y_j, h_j, sim_res_data, memory_GB=memory_GB, n_cpu=n_cpu)
         power_kwargs = {}
         if 'type' in (self.windTurbines.powerCtFunction.required_inputs +
                       self.windTurbines.powerCtFunction.optional_inputs):
@@ -392,7 +392,7 @@ class EngineeringWindFarmModel(WindFarmModel):
         aep_j = (power_jlk * lw_j.P_ilk).sum((1, 2))
         return aep_j * 365 * 24 * 1e-9
 
-    def _flow_map(self, x_j, y_j, h_j, sim_res_data, D_dst=0, max_memory_GB=1, n_cpu=1):
+    def _flow_map(self, x_j, y_j, h_j, sim_res_data, D_dst=0, memory_GB=1, n_cpu=1):
         """call this function via SimulationResult.flow_map"""
         arg_funcs, lw_j, wd, WD_il = self.get_map_args(x_j, y_j, h_j, sim_res_data, D_dst=D_dst)
         I, J, L, K = arg_funcs['IJLK']()
@@ -401,9 +401,12 @@ class EngineeringWindFarmModel(WindFarmModel):
             return (lw_j, np.broadcast_to(lw_j.WS_ilk, (len(x_j), L, K)).astype(float),
                     np.broadcast_to(lw_j.TI_ilk, (len(x_j), L, K)).astype(float))
         n_cpu = n_cpu or multiprocessing.cpu_count()
-        size_GB = I * J * L * K * 8 * 6 * n_cpu / 1024**3  # *6=dx_ijlk, dy_ijlk, dz_ijlk, dh_ijlk, deficit, blockage
-        wd_chunks = int(np.clip(np.ceil(size_GB / max_memory_GB), 1, L))
-        j_chunks = int(np.clip(np.ceil(size_GB / wd_chunks / max_memory_GB), 1, J))
+        # *6=dx_ijlk, dy_ijlk, dz_ijlk, dh_ijlk, deficit, blockage
+        size_GB = I * J * L * K * np.array([]).itemsize * 6 * n_cpu / 1024**3
+        min_wd_chunks = np.minimum(n_cpu, L)
+        wd_chunks = int(np.clip(np.ceil(size_GB / memory_GB), min_wd_chunks, L))
+        min_j_chunks = np.minimum(int(np.ceil(n_cpu / wd_chunks)), J)
+        j_chunks = int(np.clip(np.ceil(size_GB / wd_chunks / memory_GB), min_j_chunks, J))
 
         map_func = get_starmap_func(n_cpu=n_cpu, verbose=wd_chunks + j_chunks > 2 and self.verbose, desc='Calculate flow map',
                                     unit='wd', leave=0)

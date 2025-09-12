@@ -708,13 +708,13 @@ class SimulationResult(xr.Dataset):
                         raise KeyError(f"Argument, {k}, required to calculate power and ct not found")
         return wt_kwargs
 
-    def aep_map(self, grid=None, wd=None, ws=None, type=0, normalize_probabilities=False, max_memory_GB=1, n_cpu=1):  # @ReservedAssignment
+    def aep_map(self, grid=None, wd=None, ws=None, type=0, normalize_probabilities=False, memory_GB=1, n_cpu=1):  # @ReservedAssignment
         X, Y, x_j, y_j, h_j, plane = self._get_grid(grid)
         wd, ws = self._wd_ws(wd, ws)
         sim_res = self.sel(wd=wd, ws=ws)
         for k in self.__slots__:
             setattr(sim_res, k, getattr(self, k))
-        aep_j = self.windFarmModel._aep_map(x_j, y_j, h_j, type, sim_res, n_cpu, max_memory_GB)
+        aep_j = self.windFarmModel._aep_map(x_j, y_j, h_j, type, sim_res, n_cpu, memory_GB)
         if normalize_probabilities:
             lw_j = self.windFarmModel.site.local_wind(x=x_j, y=y_j, h=h_j, wd=wd, ws=ws)
             aep_j /= lw_j.P_ilk.sum((1, 2))
@@ -729,7 +729,7 @@ class SimulationResult(xr.Dataset):
         else:  # pragma: no cover
             raise NotImplementedError()
 
-    def flow_map(self, grid=None, wd=None, ws=None, time=None, D_dst=0, max_memory_GB=1, n_cpu=1):
+    def flow_map(self, grid=None, wd=None, ws=None, time=None, D_dst=0, memory_GB=1, n_cpu=1):
         """Return a FlowMap object with WS_eff and TI_eff of all grid points
 
         Parameters
@@ -748,7 +748,16 @@ class SimulationResult(xr.Dataset):
         D_dst : int, float or None
             In combination with a rotor average model, D_dst defines the downstream rotor diameter
             at which the deficits will be averaged
-
+        memory_GB : int or float, optional
+            If the additional memory needed to compute the flow map is assumed to exceed `memory_GB` GB using
+            simple models, then the flow map is split into a number of wind direction and/or point chunks to
+            reduce the memory consumption.
+            The default is 1 GB
+        n_cpu : int or None, otional
+            Number of CPUs used to compute the flow map.
+            If None, all available CPUs are used.
+            Default is 1.
+            Note, that for in many cases 1 CPU are the faster option
         See Also
         --------
         pywake.wind_farm_models.flow_map.FlowMap
@@ -767,7 +776,7 @@ class SimulationResult(xr.Dataset):
             setattr(sim_res, k, getattr(self, k))
 
         lw_j, WS_eff_jlk, TI_eff_jlk = self.windFarmModel._flow_map(
-            x_j, y_j, h_j, sim_res, D_dst=D_dst, max_memory_GB=max_memory_GB, n_cpu=n_cpu)
+            x_j, y_j, h_j, sim_res, D_dst=D_dst, memory_GB=memory_GB, n_cpu=n_cpu)
         return FlowMap(sim_res, X, Y, lw_j, WS_eff_jlk, TI_eff_jlk, plane=plane)
 
     def _wd_ws(self, wd, ws):

@@ -321,25 +321,29 @@ def test_flow_map_point_chunks():
 
     # j chunks
     fm1 = sim_res.flow_map(XYGrid(resolution=500), wd=270)
-    fm2 = sim_res.flow_map(XYGrid(resolution=500), wd=270, max_memory_GB=0.005)
-    fm3 = sim_res.flow_map(XYGrid(resolution=500), wd=270, max_memory_GB=0.005, n_cpu=2)
+    fm2 = sim_res.flow_map(XYGrid(resolution=500), wd=270, memory_GB=0.005)
+    fm3 = sim_res.flow_map(XYGrid(resolution=500), wd=270, memory_GB=0.005, n_cpu=4)
     npt.assert_array_equal(fm1.WS_eff, fm2.WS_eff)
     npt.assert_array_equal(fm1.WS_eff, fm3.WS_eff)
 
     # wd chunks
     fm4 = sim_res.flow_map(XYGrid(resolution=50), wd=270)
     fm5 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd)
-    fm6 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, max_memory_GB=0.002)
-    fm7 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, max_memory_GB=0.002, n_cpu=2)
+    fm6 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, memory_GB=0.002)
+    fm7 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, memory_GB=0.002, n_cpu=4)
     npt.assert_array_equal(fm4.WS_eff, fm5.WS_eff.sel(wd=[270]))
     npt.assert_array_equal(fm5.WS_eff, fm6.WS_eff)
     npt.assert_array_equal(fm5.WS_eff, fm7.WS_eff)
 
     # both wd and j chunks
-    fm8 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, max_memory_GB=0.0005)
-    fm9 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, max_memory_GB=0.0005, n_cpu=2)
+    fm8 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, memory_GB=0.0005)
+    fm9 = sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd, memory_GB=0.0005, n_cpu=4)
     npt.assert_array_equal(fm5.WS_eff, fm8.WS_eff)
     npt.assert_array_equal(fm5.WS_eff, fm9.WS_eff)
+
+    sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd[:1], n_cpu=4)
+    sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd[:2], n_cpu=4)
+    sim_res.flow_map(XYGrid(resolution=50), wd=sim_res.wd[:], n_cpu=4)
 
     if 0:
         fm1.plot_wake_map()

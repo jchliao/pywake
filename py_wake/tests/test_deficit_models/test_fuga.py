@@ -48,8 +48,8 @@ def test_fuga():
 
     wake_model = Fuga(path, site, wts)
     sim_res = wake_model(wt_x, wt_y, wd=[30], ws=[10])
-    flow_map70 = sim_res.flow_map(HorizontalGrid(x_j, y_j, h=70))
-    flow_map73 = sim_res.flow_map(HorizontalGrid(x_j, y_j, h=73))
+    flow_map70 = sim_res.flow_map(HorizontalGrid(x_j, y_j, h=70), memory_GB=0.5)
+    flow_map73 = sim_res.flow_map(HorizontalGrid(x_j, y_j, h=73), memory_GB=0.5)
 
     X, Y = flow_map70.XY
     Z70 = flow_map70.WS_eff_xylk[:, :, 0, 0]
@@ -127,8 +127,8 @@ def test_fuga_new_casedata_bin_format():
     y_j = np.linspace(-1500, 1500, 300)
 
     sim_res = wake_model(wt_x, wt_y, wd=[30], ws=[10])
-    flow_map70 = sim_res.flow_map(HorizontalGrid(x_j, y_j, h=70))
-    flow_map73 = sim_res.flow_map(HorizontalGrid(x_j, y_j, h=73))
+    flow_map70 = sim_res.flow_map(HorizontalGrid(x_j, y_j, h=70), memory_GB=0.5)
+    flow_map73 = sim_res.flow_map(HorizontalGrid(x_j, y_j, h=73), memory_GB=0.5)
 
     X, Y = flow_map70.XY
     Z70 = flow_map70.WS_eff_xylk[:, :, 0, 0]
