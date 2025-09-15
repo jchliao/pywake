@@ -96,11 +96,6 @@ def test_convergence_hornsrev():
         plt.show()
 
 
-def test_when_ct_idle_fails():
-    wt = IEA34_130_1WT_Surrogate()
-    sim_res = All2AllIterative(Hornsrev1Site(), wt, NOJDeficit(), turbulenceModel=STF2017TurbulenceModel())([0], [0], )
-
-
 def test_not_converge():
     class RandomRathmann(Rathmann):
 

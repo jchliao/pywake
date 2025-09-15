@@ -916,13 +916,17 @@ class All2AllIterative(EngineeringWindFarmModel):
 
         wt_kwargs = self.get_wt_kwargs(TI_eff_ilk, kwargs)
         ct_ilk = self.windTurbines.ct(ws=WS_eff_ilk, **wt_kwargs)
-        try:
-            if hasattr(self.windTurbines.powerCtFunction, 'ct_idle'):
-                ct_ilk_idle = np.ones_like(WS_ILK) * self.windTurbines.powerCtFunction.ct_idle
-            else:
-                ct_ilk_idle = self.windTurbines.ct(ws=0.1 * np.ones_like(WS_ILK), **wt_kwargs)
-        except BaseException:
-            ct_ilk_idle = 0
+
+        if hasattr(self.windTurbines.powerCtFunction, 'ct_idle') and \
+                self.windTurbines.powerCtFunction.ct_idle is not None:
+            ct_ilk_idle = np.ones_like(WS_ILK) * self.windTurbines.powerCtFunction.ct_idle
+        else:
+
+            def get_ct(ws):
+                return self.windTurbines.ct(ws=ws * np.ones_like(WS_ILK), **wt_kwargs)
+
+            ct_ilk_idle = np.min([get_ct(ws) for ws in np.arange(0, 26)], 0)
+
         unstable_lk = np.zeros((L, K), dtype=bool)
         ioff = np.broadcast_to(ct_ilk, (I, L, K)) < -1  # index of off/idling turbines
         model_kwargs = {'WS_ilk': WS_ilk,
