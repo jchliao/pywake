@@ -5,6 +5,30 @@ import warnings
 import inspect
 from py_wake.wind_turbines.power_ct_functions import PowerCtFunctionList, PowerCtTabular, SimpleYawModel, CubePowerSimpleCt
 from xarray.core.dataarray import DataArray
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+
+# Create a qualitative color map for plotting the turbines.
+# Play with the seed to change the order of the colors.
+# Alternatively:
+#  - Select a metric from https://en.wikipedia.org/wiki/Color_difference, for example LAB.
+#  - Maximize distance between each color and the next.
+# See https://matplotlib.org/stable/users/explain/colors/colormaps.html#qualitative
+rng = np.random.default_rng(seed=99)
+cmap = np.concatenate((
+    np.array([[0.0, 0.0, 0.0]]),  # Black is always first.
+    np.array(plt.get_cmap("Dark2").colors),  # This is already perceptually different.
+    rng.permutation(
+        np.concatenate((
+            np.array([[0.5, 0.5, 0.5]]),  # grey
+            np.array(plt.get_cmap("tab20b").colors)[4:, :],  # Skip the first colors because they are blue.
+            np.array(plt.get_cmap("tab20c").colors)[4:12, :]),  # Keep orange and green.
+            axis=0),
+        axis=0)),
+    axis=0)
+# Display the color map.
+# from matplotlib.colors import ListedColormap
+# ListedColormap(colors=cmap)
 
 
 class WindTurbines():
@@ -144,7 +168,6 @@ Use WindTurbines(names, diameters, hub_heights, power_ct_funcs) instead""", Depr
         ax : pyplot or matplotlib axes object, default None
 
         """
-        import matplotlib.pyplot as plt
         if types is None:
             types = np.zeros_like(x).astype(int)
         else:
@@ -154,31 +177,33 @@ Use WindTurbines(names, diameters, hub_heights, power_ct_funcs) instead""", Depr
         if ax is None:
             ax = plt.gca()
         markers = np.array(list("213v^<>o48spP*hH+xXDd|_"))
-        colors = ['k', 'gray', 'r', 'g'] * 5
 
-        from matplotlib.patches import Circle
         assert len(x) == len(y)
 
+        # Yaw and tilt can be a scalar or wd-dependent vector, therefore we cannot use full_like.
         yaw = np.zeros_like(x) + yaw
         tilt = np.zeros_like(x) + tilt
 
         x, y, D = [np.asarray(v) / normalize_with for v in [x, y, self.diameter(types)]]
         R = D / 2
         for i, (x_, y_, r, t, yaw_, tilt_) in enumerate(zip(x, y, R, types, yaw, tilt)):
+            # Take the color for the current turbine type.
+            color = cmap[t % cmap.shape[0], :]
             if wd is None or len(np.atleast_1d(wd)) > 1:
-                circle = Circle((x_, y_), r, ec=colors[t], fc="None")
+                circle = Circle((x_, y_), r, ec=color, fc="None")
                 ax.add_artist(circle)
                 ax.plot(x_, y_, 'None', )
             else:
                 for wd_ in np.atleast_1d(wd):
                     circle = Ellipse((x_, y_), 2 * r * np.sin(np.deg2rad(tilt_)), 2 * r,
-                                     angle=90 - wd_ + yaw_, ec=colors[t], fc="None")
+                                     angle=90 - wd_ + yaw_, ec=color, fc="None")
                     ax.add_artist(circle)
-                    ax.plot(x_, y_, '.', color=colors[t])
+                    ax.plot(x_, y_, '.', color=color)
 
-        for t, m, c in zip(np.unique(types), markers, colors):
+        for t, m in zip(np.unique(types), markers):
+            color = cmap[t % cmap.shape[0], :]
             # ax.plot(np.asarray(x)[types == t], np.asarray(y)[types == t], '%sk' % m, label=self._names[int(t)])
-            ax.plot([], [], '2', color=colors[t], label=self._names[int(t)])
+            ax.plot([], [], '2', color=color, label=self._names[int(t)])
 
         for i, (x_, y_, r) in enumerate(zip(x, y, R)):
             ax.annotate(i, (x_ + r, y_ + r), fontsize=7)
@@ -200,7 +225,6 @@ Use WindTurbines(names, diameters, hub_heights, power_ct_funcs) instead""", Depr
         ax : pyplot or matplotlib axes object, default None
 
         """
-        import matplotlib.pyplot as plt
         if z is None:
             z = np.zeros_like(y)
         if types is None:
@@ -249,7 +273,6 @@ Use WindTurbines(names, diameters, hub_heights, power_ct_funcs) instead""", Depr
         return self.plot_xy(x, y, type, wd, yaw, tilt, normalize_with, ax)
 
     def plot_power_ct(self, ax=None, ws=np.linspace(0, 25, 1000), **wt_kwargs):
-        import matplotlib.pyplot as plt
         if ax is None:
             ax = plt.gca().figure.axes[0]
         power, ct = self.power_ct(ws, **wt_kwargs)
@@ -396,7 +419,6 @@ class WindTurbine(WindTurbines):
 def main():
     if __name__ == '__main__':
         import os.path
-        import matplotlib.pyplot as plt
         from py_wake.examples.data import wtg_path
 
         wts = WindTurbines(names=['tb1', 'tb2'],
