@@ -116,8 +116,10 @@ PyWake 2.5.0: An open-source wind farm simulation tool. DTU Wind, Technical Univ
 	:caption: Model Verification
 
         notebooks/literature_verification/TurbOPark
-	    notebooks/literature_verification/SuperGaussian
+        notebooks/literature_verification/SuperGaussian
         notebooks/literature_verification/Gaussian
+        notebooks/literature_verification/CumulativeWake
+
 
     .. toctree::
         :maxdepth: 2
