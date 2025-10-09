@@ -15,7 +15,7 @@ from py_wake.examples.data.iea37._iea37 import IEA37_WindTurbines, IEA37Site, IE
 from py_wake.ground_models.ground_models import GroundModel
 from py_wake.rotor_avg_models.rotor_avg_model import RotorAvgModel
 from py_wake.site.distance import StraightDistance
-from py_wake.site.shear import LogShear, PowerShear, Shear
+from py_wake.site.shear import LogShear, PowerShear, Shear, MOSTShear
 from py_wake.superposition_models import SuperpositionModel, AddedTurbulenceSuperpositionModel
 from py_wake.tests import npt
 from py_wake.turbulence_models.stf import STF2017TurbulenceModel, STF2005TurbulenceModel
@@ -224,7 +224,8 @@ def test_sites(site):
 def test_shear(model):
     if model is not None:
         model = {PowerShear: PowerShear(h_ref=100, alpha=.1),
-                 LogShear: LogShear(h_ref=100, z0=.03)}[model]
+                 LogShear: LogShear(h_ref=100, z0=.03),
+                 MOSTShear: MOSTShear(h_ref=100, z0=.03, h_zeta=0.0)}[model]
         check_gradients(lambda site, wt, s=Hornsrev1Site(shear=model): PropagateDownwind(
             s, wt, wake_deficitModel=BastankhahGaussianDeficit(),
         ),

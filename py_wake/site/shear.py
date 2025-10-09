@@ -1,4 +1,5 @@
 from py_wake import np
+from py_wake.utils.most import phi, psi, phi_eps
 from numpy import newaxis as na
 from abc import abstractmethod, ABC
 
@@ -35,18 +36,26 @@ class PowerShear(Shear):
         return (h / self.h_ref)[:, na, na] ** alpha * WS_ilk
 
 
-class LogShear(Shear):
-    def __init__(self, h_ref=100, z0=.03, interp_method='nearest'):
+class MOSTShear(Shear):
+    def __init__(self, h_ref=100, z0=.03, h_zeta=0.0, Cm1=5.0, Cm2=-19.3, interp_method='nearest'):
         self.h_ref = h_ref
         from py_wake.site._site import get_sector_xr
         self.z0 = get_sector_xr(z0, "Roughness length")
+        self.h_zeta = h_zeta
+        self.Cm1 = Cm1
+        self.Cm2 = Cm2
         self.interp_method = interp_method
 
     def __call__(self, localWind, WS_ilk, h):
         assert np.all(h > 0), f"LogShear invalid at z=0"
         z0 = self.z0.interp_ilk(localWind.coords, interp_method=self.interp_method)
-        return np.log(h[:, na, na] / z0) / np.log(self.h_ref / z0) * WS_ilk
+        L_inv = self.h_zeta / self.h_ref  # 1 / Obukhov length
+        return (np.log(h[:, na, na] / z0) - psi(h[:, na, na] * L_inv, Cm1=self.Cm1, Cm2=self.Cm2)) / (np.log(self.h_ref / z0) - psi(self.h_zeta, Cm1=self.Cm1, Cm2=self.Cm2)) * WS_ilk
 
+
+class LogShear(MOSTShear):
+    def __init__(self, h_ref=100, z0=.03, interp_method='nearest'):
+        MOSTShear.__init__(self, h_ref=h_ref, z0=z0, interp_method=interp_method)
 
 # ======================================================================================================================
 # Potentially the code below can be used to implement power/log shear interpolation between grid layers

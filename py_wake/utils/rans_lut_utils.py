@@ -5,6 +5,7 @@ from scipy.interpolate._interpolate import interp1d
 from py_wake.rotor_avg_models.rotor_avg_model import EllipSysPolygonRotorAvg
 import os
 from pathlib import Path
+from py_wake.utils.most import phi, psi, phi_eps
 
 
 class RANSLUTModel():
@@ -64,9 +65,9 @@ class ADControl():
                 # f.write('%16.14f %16.14f %16.14f %16.14f\n' % (ws[-1], 0.0, 0.0, ws[-1]))
 
     @staticmethod
-    def from_lut(lut, windTurbines, ws_cutin, ws_cutout, dws, cal_TI,
+    def from_lut(lut, windTurbines, ws_cutin, ws_cutout, dws, cal_TI, cal_zeta=0.0,
                  rotorAvgModel=EllipSysPolygonRotorAvg(n_r=9, n_theta=32),
-                 density=1.225, cmu=0.03, kappa=0.4):
+                 density=1.225, cmu=0.03, kappa=0.4, Cm1=5.0, Cm2=-16.0):
         """Calculcate ADControl object containing CPstar, CTstar = f(UAD) directly from single wake RANS-LUT
 
 
@@ -102,8 +103,10 @@ class ADControl():
         lut_U = [get_lut_U(lut) for lut in lut_lst]
         weights = rotorAvgModel.nodes_weight[na, :]
 
-        uStar_UH = cal_TI * np.sqrt(1.5 * np.sqrt(cmu))
-        # z0 = zRef / (np.exp(kappa / uStar_UH) - 1)
+        phim = phi(cal_zeta, Cm1=Cm1, Cm2=Cm2)
+        psim = psi(cal_zeta, Cm1=Cm1, Cm2=Cm2)
+        phieps = phi_eps(cal_zeta, Cm1=Cm1)
+        uStar_UH = cal_TI * np.sqrt(1.5 * np.sqrt(cmu)) * phieps ** -0.25 * phim ** 0.25
 
         types = np.arange(len(lut_U))
         ws_cutin, ws_cutout = np.zeros(len(types)) + ws_cutin, np.zeros(len(types)) + ws_cutout
@@ -130,10 +133,10 @@ class ADControl():
             cps = (windTurbines.power(ws=ws, **_kwargs) / (0.125 * density * Dref ** 2 * np.pi * ws ** 3))
 
             # PWE: z0 is added to h_j and zH
-            # logshear = np.log(h_j / z0) / np.log(zRef / z0)
-            z0 = zH / (np.exp(kappa / uStar_UH) - 1)
-            logshear = np.log(h_j / z0) / np.log(zH / z0)
-            U = logshear[na, :] - 1.0 + Udata.interp(ct=cts, kwargs={"fill_value": "extrapolate"}).values
+            z0 = zH / (np.exp(kappa / uStar_UH + psim) - 1)
+            L_inv = cal_zeta / zH  # 1 / Obukhov length
+            mostshear = (np.log(h_j / z0) - psi(h_j * L_inv, Cm1=Cm1, Cm2=Cm2)) / (np.log(zH / z0) - psim)
+            U = mostshear[na, :] - 1.0 + Udata.interp(ct=cts, kwargs={"fill_value": "extrapolate"}).values
             UAD = ws * np.sum(np.reshape(U, (len(ws), -1)) * weights, axis=1)
             ratio = ws / UAD
             UAD_CTstar_CPstar = np.array([UAD, cts * ratio ** 2, cps * ratio ** 3])

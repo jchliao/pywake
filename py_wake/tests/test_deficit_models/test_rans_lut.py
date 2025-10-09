@@ -150,6 +150,33 @@ def test_rans_lut():
     npt.assert_array_almost_equal(ct_star.flatten(), CTstar_expected, 6)
     npt.assert_array_almost_equal(simres.TI_eff.values.flatten(), TI_eff_expected, 6)
 
+    # Test MOST shear, stable.
+    # WS_eff_star does not change since we not change the actual simulation using Site with MOSTShear and LUTs with stability
+    aDControl2 = ADControl.from_lut([dataset, lut2], wts, ws_cutin=4, ws_cutout=25, dws=1.0, cal_TI=0.06, cal_zeta=0.5)
+    ellipsys_power, WS_eff_star, ct_star = get_Ellipsys_equivalent_output(simres, aDControl2)
+
+    # print(ct_star.flatten())
+    # print(ellipsys_power.flatten() * 1e-6)
+    CTstar_expected = [1.32895893, 1.33159161, 1.36637959, 1.32630388, 1.36116655, 1.36639816, 1.36463016]
+    power_expected = [1.34531419, 1.33329859, 0.72796236, 1.35150555, 1.060569, 0.72981311, 0.56473626]
+
+    npt.assert_array_almost_equal(ellipsys_power.flatten() * 1e-6, power_expected, 6)
+    npt.assert_array_almost_equal(WS_eff_star.flatten(), UAD_expected, 6)
+    npt.assert_array_almost_equal(ct_star.flatten(), CTstar_expected, 6)
+
+    # Test MOST shear, unstable
+    aDControl2 = ADControl.from_lut([dataset, lut2], wts, ws_cutin=4, ws_cutout=25, dws=1.0, cal_TI=0.06, cal_zeta=-0.5)
+    ellipsys_power, WS_eff_star, ct_star = get_Ellipsys_equivalent_output(simres, aDControl2)
+
+    # print(ct_star.flatten())
+    # print(ellipsys_power.flatten() * 1e-6)
+    CTstar_expected = [1.3254684, 1.32682915, 1.36065434, 1.32318215, 1.35620019, 1.36067278, 1.35891729]
+    power_expected = [1.33938202, 1.32595377, 0.72335257, 1.34597418, 1.05462423, 0.72519153, 0.56109148]
+
+    npt.assert_array_almost_equal(ellipsys_power.flatten() * 1e-6, power_expected, 6)
+    npt.assert_array_almost_equal(WS_eff_star.flatten(), UAD_expected, 6)
+    npt.assert_array_almost_equal(ct_star.flatten(), CTstar_expected, 6)
+
 
 def test_rans_lut_multi_wd_ws():
     # move turbine 1 600 300
