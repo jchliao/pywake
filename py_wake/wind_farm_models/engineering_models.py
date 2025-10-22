@@ -254,10 +254,6 @@ class EngineeringWindFarmModel(WindFarmModel):
                       **{k: concatenate([wt_i[k] for wt_i in kwargs]) for k in kwargs[0] if k.endswith('_ilk')}}])
 
         # Calculate down-wind and cross-wind distances
-        z_ilk = self.site.elevation(kwargs['x_ilk'], kwargs['y_ilk'])
-        self.site.distance.setup(
-            np.asarray(kwargs['x_ilk']), np.asarray(kwargs['y_ilk']), np.asarray(kwargs['h_ilk']), np.asarray(z_ilk))
-
         WS_eff_ilk, TI_eff_ilk, ct_ilk, kwargs = self._calc_wt_interaction(**kwargs)
 
         power_ilk = self.windTurbines.power(ws=WS_eff_ilk, **self.get_wt_kwargs(TI_eff_ilk, kwargs))
@@ -309,10 +305,8 @@ class EngineeringWindFarmModel(WindFarmModel):
         return map_arg_funcs, lw_j, wd, WD_il
 
     def _get_flow_l(self, model_kwargs, wt_x_ilk, wt_y_ilk, wt_h_ilk, x_j, y_j, h_j, wd, WD_ilk, WS_jlk, TI_jlk):
-        wt_z_ilk = self.site.elevation(wt_x_ilk, wt_y_ilk)
-        z_j = self.site.elevation(x_j, y_j)
-        self.site.distance.setup(wt_x_ilk, wt_y_ilk, wt_h_ilk, wt_z_ilk, (x_j, y_j, h_j, z_j))
-        dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(wd_l=wd, WD_ilk=WD_ilk)
+        dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(wt_x_ilk, wt_y_ilk, wt_h_ilk, wd_l=wd, WD_ilk=WD_ilk,
+                                                        dst_xyh_jlk=(x_j, y_j, h_j))
 
         if self.wec != 1:
             hcw_ijlk = hcw_ijlk / self.wec
@@ -507,7 +501,7 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
         WS_ilk = kwargs.pop('WS_ilk')
         blockage_deficit = WS_ilk * 0.
         I = kwargs['I']
-        dw_order_indices_ld = self.site.distance.dw_order_indices(wd)[:, 0]
+        dw_order_indices_ld = self.site.distance.dw_order_indices(kwargs['x_ilk'], kwargs['y_ilk'], wd)[:, 0]
 
         if self.blockage_deficitModel:
             # use linear sum as default blockage superpositionModel
@@ -704,7 +698,6 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
                              'WD_ilk': lambda: WD_mk[m][na],
                              **{k + '_ilk': lambda k=k: ilk2mk(kwargs[k + '_ilk'])[m][na] for k in 'xyh'},
                              'type_il': lambda: kwargs['type_i'][i_wt_l][na]
-
                              }
                 model_kwargs = {k: arg_funcs[k]() for k in self.args4all if k in arg_funcs}
 
@@ -712,8 +705,11 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
                 custom_args = (set([k for k in self.args4all if k.endswith('_ilk')]) - set(model_kwargs)) & set(kwargs)
                 model_kwargs.update({k: ilk2mk(kwargs[k])[m][na] for k in custom_args})
 
+                def get_pos(v_ilk, i_wt_l, i_wd_l):
+                    return v_ilk[i_wt_l, np.minimum(i_wd_l, v_ilk.shape[1] - 1).astype(int)]
                 dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(
-                    wd_l=wd, WD_ilk=WD_mk[m][na], src_idx=i_wt_l, dst_idx=i_dw.T)
+                    *[get_pos(kwargs[k + '_ilk'], i_wt_l, i_wd_l)[na] for k in 'xyh'], wd_l=wd, WD_ilk=WD_mk[m][na],
+                    dst_xyh_jlk=[get_pos(kwargs[k + '_ilk'], i_dw.T, i_wd_l) for k in 'xyh'])
 
                 for inputModidifierModel in self.inputModifierModels:
                     modified_input_dict = inputModidifierModel(**model_kwargs)
@@ -833,7 +829,7 @@ class PropagateDownwind(PropagateUpDownIterative):
     def _calc_wt_interaction(self, wd, WS_eff_ilk, **kwargs):
         WS_ilk = kwargs.pop('WS_ilk')
 
-        dw_order_indices_ld = self.site.distance.dw_order_indices(wd)[:, 0]
+        dw_order_indices_ld = self.site.distance.dw_order_indices(kwargs['x_ilk'], kwargs['y_ilk'], wd)[:, 0]
         return self._propagate_deficit(wd, dw_order_indices_ld, WS_ilk, **kwargs)
 
 
@@ -894,7 +890,7 @@ class All2AllIterative(EngineeringWindFarmModel):
             # Initialize with PropagateDownwind
             blockage_deficitModel = self.blockage_deficitModel
             self.blockage_deficitModel = None
-            dw_order_indices_ld = self.site.distance.dw_order_indices(wd)[:, 0]
+            dw_order_indices_ld = self.site.distance.dw_order_indices(kwargs['x_ilk'], kwargs['y_ilk'], wd)[:, 0]
             self.direction = 'down'
             WS_eff_ilk = PropagateUpDownIterative._propagate_deficit(
                 self, wd, dw_order_indices_ld, WD_ilk=WD_ilk, WS_ilk=WS_ilk, TI_ilk=TI_ilk,
@@ -911,7 +907,7 @@ class All2AllIterative(EngineeringWindFarmModel):
         diff_lk_last = None
         max_diff_last = None
         a = 1
-        dw_iilk, hcw_iilk, dh_iilk = self.site.distance(wd_l=wd, WD_ilk=WD_ilk)
+        dw_iilk, hcw_iilk, dh_iilk = self.site.distance(*[kwargs[k + '_ilk'] for k in 'xyh'], wd_l=wd, WD_ilk=WD_ilk)
         kwargs['WD_ilk'] = WD_ilk
 
         wt_kwargs = self.get_wt_kwargs(TI_eff_ilk, kwargs)
@@ -987,10 +983,9 @@ class All2AllIterative(EngineeringWindFarmModel):
                 modified_input_dict = inputModidifierModel(**model_kwargs)
                 model_kwargs.update(modified_input_dict)
                 if any([k in modified_input_dict for k in ['x_ilk', 'y_ilk']]):
-                    z_ilk = self.site.elevation(model_kwargs['x_ilk'], model_kwargs['y_ilk'])
-                    self.site.distance.setup(model_kwargs['x_ilk'], model_kwargs['y_ilk'], model_kwargs['h_ilk'], z_ilk)
-                    model_kwargs.update({k: v for k, v in zip(['dw_ijlk', 'hcw_ijlk', 'dh_ijlk'],
-                                                              self.site.distance(wd_l=wd, WD_ilk=WD_ilk))})
+                    model_kwargs.update({k: v for k, v in zip(
+                        ['dw_ijlk', 'hcw_ijlk', 'dh_ijlk'],
+                        self.site.distance(*[model_kwargs[k + '_ilk'] for k in 'xyh'], wd_l=wd, WD_ilk=WD_ilk))})
                     model_kwargs['cw_ijlk'] = gradients.hypot(model_kwargs['dh_ijlk'], model_kwargs['hcw_ijlk'])
                     if not self.deflectionModel:
                         self._init_deficit(**model_kwargs)

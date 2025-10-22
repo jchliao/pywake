@@ -217,13 +217,12 @@ def test_iea37_distances():
     lw = site.local_wind(x=x, y=y,
                          wd=site.default_wd,
                          ws=site.default_ws)
-    site.distance.setup(x, y, np.zeros_like(x), np.zeros_like(x))
-    dw_iil, hcw_iil, _ = site.wt2wt_distances(wd_l=lw.wd)
+    dw_iil, hcw_iil, _ = site.distance(x, y, x * 0, wd_l=lw.wd)
     # Wind direction.
     wdir = np.rad2deg(np.arctan2(hcw_iil, dw_iil))
     npt.assert_allclose(
         wdir[:, 0, 0, 0],
-        [180, -90, -18, 54, 126, -162, -90, -54, -18, 18, 54, 90, 126, 162, -162, -126],
+        [0, -90, -18, 54, 126, -162, -90, -54, -18, 18, 54, 90, 126, 162, -162, -126],
         atol=1e-4)
 
     if 0:

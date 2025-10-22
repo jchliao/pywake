@@ -28,7 +28,7 @@ from py_wake.deficit_models.no_wake import NoWakeDeficit
 from py_wake.rotor_avg_models.rotor_avg_model import CGIRotorAvg
 import warnings
 from py_wake.deficit_models.utils import ct2a_mom1d
-from py_wake.wind_turbines._wind_turbines import WindTurbine, WindTurbines
+from py_wake.wind_turbines._wind_turbines import WindTurbines
 from py_wake.site._site import UniformSite
 from py_wake.deficit_models.rans_lut import RANSLUTDemoDeficit
 
@@ -63,10 +63,10 @@ class GCLLocalDeficit(GCLDeficit):
         (IEA37SimpleBastankhahGaussianDeficit(), read_iea37_windfarm(iea37_path + 'iea37-ex16.yaml')[2]),
         (FugaDeficit(LUT_path=tfp + 'fuga/2MW/Z0=0.00408599Zi=00400Zeta0=0.00E+00.nc',
                      smooth2zero_x=250, smooth2zero_y=50),
-         (404307.913694007, [9962.5736, 9801.78637, 12608.917, 15452.89633, 22577.55462,
-                             27901.06282, 43479.02414, 49825.74736, 25105.68548, 15542.67624,
-                             16918.79822, 35640.98079, 76856.89565, 19752.83273, 13882.09085,
-                             8998.39151])),
+         (404307.96007812454, [9962.59462, 9801.78637, 12608.917, 15452.89633, 22577.55462,
+                               27901.06281, 43479.02414, 49825.74736, 25105.71085, 15542.67624,
+                               16918.79822, 35640.98079, 76856.89565, 19752.83273, 13882.09085,
+                               8998.39151])),
         (GCLDeficit(), (370863.6246093183,
                         [9385.75387, 8768.52105, 11450.13309, 14262.42186, 21178.74926,
                          25751.59502, 39483.21753, 44573.31533, 23652.09976, 13924.58752,
@@ -227,8 +227,8 @@ def test_deficitModel_wake_map(deficitModel, ref):
 
     x_j = np.linspace(-1500, 1500, 200)
     y_j = np.linspace(-1500, 1500, 100)
-
-    flow_map = wf_model(x, y, wd=0, ws=9).flow_map(HorizontalGrid(x_j, y_j))
+    wf_model(x, y, wd=1e-6, ws=9).flow_map(HorizontalGrid(x_j[100:133:2], y_j[[49]]))
+    flow_map = wf_model(x, y, wd=1e-6, ws=9).flow_map(HorizontalGrid(x_j, y_j))
     X, Y = flow_map.X, flow_map.Y
     Z = flow_map.WS_eff_xylk[:, :, 0, 0]
 
@@ -343,21 +343,21 @@ def test_wake_radius_not_implemented():
 @pytest.mark.parametrize(
     'deficitModel,aep_ref',
     # test that the result is equal to last run (no evidens that  these number are correct)
-    [(BastankhahGaussianDeficit(ct2a=ct2a_mom1d), (345846.3355259293,
-                                                   [8835.30563, 7877.90062, 11079.66832, 13565.65235, 18902.99769,
-                                                    24493.53897, 38205.75284, 40045.9948, 22264.97018, 12662.90784,
-                                                    14650.96535, 31289.90349, 65276.92307, 17341.39229, 12021.3049,
-                                                    7331.15717])),
+    [(BastankhahGaussianDeficit(ct2a=ct2a_mom1d), (345844.56385386083,
+                                                   [8835.30376, 7877.89335, 11079.53783, 13565.45008, 18902.94686,
+                                                    24493.17471, 38205.304, 40045.95482, 22264.96545, 12662.88276,
+                                                    14650.96516, 31289.89954, 65276.44783, 17341.3905, 12021.30506,
+                                                    7331.14214])),
      (ZongGaussianDeficit(ct2a=ct2a_mom1d, eps_coeff=0.35),
-      (342944.4057168523, [8674.44232, 7806.22033, 11114.78804, 13549.48197, 18895.50866,
-                           24464.34244, 38326.85532, 39681.61999, 21859.59465, 12590.25899,
-                           14530.24656, 31158.81189, 63812.14454, 17268.73912, 11922.25359,
-                           7289.09731])),
+      (342945.18621135753, [8674.44233, 7806.22057, 11114.78784, 13549.48164, 18895.50866,
+                            24464.34303, 38326.85602, 39681.61877, 21860.37542, 12590.25945,
+                            14530.24631, 31158.81143, 63812.14454, 17268.73937, 11922.2538,
+                            7289.09705])),
      (NiayifarGaussianDeficit(ct2a=ct2a_mom1d),
-      (349044.6891842835, [8888.36909, 8025.38191, 11134.3202, 13643.08009, 19503.25093,
-                           24633.33906, 38394.20758, 40795.69138, 22398.69011, 12972.04355,
-                           14504.45911, 31328.69308, 66049.04782, 17362.89014, 11901.09465,
-                           7510.13048])),
+      (349044.6889144409, [8888.3691, 8025.38213, 11134.32002, 13643.07981, 19503.25093,
+                           24633.33957, 38394.20821, 40795.69026, 22398.6901, 12972.04395,
+                           14504.45888, 31328.69272, 66049.04782, 17362.89034, 11901.09484,
+                           7510.13025])),
 
      ])
 def test_IEA37_ex16_convection(deficitModel, aep_ref):
@@ -368,7 +368,7 @@ def test_IEA37_ex16_convection(deficitModel, aep_ref):
     wf_model = PropagateDownwind(site, windTurbines, wake_deficitModel=deficitModel,
                                  superpositionModel=WeightedSum(), turbulenceModel=GCLTurbulence())
 
-    aep_ilk = wf_model(x, y, wd=np.arange(0, 360, 22.5), ws=[9.8]).aep_ilk(normalize_probabilities=True)
+    aep_ilk = wf_model(x, y, wd=np.arange(0, 360, 22.5) + 1e-6, ws=[9.8]).aep_ilk(normalize_probabilities=True)
     aep_MW_l = aep_ilk.sum((0, 2)) * 1000
 
     # check if ref is reasonable
@@ -487,8 +487,8 @@ def test_deficitModel_wake_map_convection_all2all(deficitModel, ref):
      (IEA37SimpleBastankhahGaussian, read_iea37_windfarm(iea37_path + 'iea37-ex16.yaml')[2]),
      (lambda *args, **kwargs: Fuga(tfp + 'fuga/2MW/Z0=0.00408599Zi=00400Zeta0=0.00E+00.nc',
                                    *args, **kwargs),
-      (404411.56948244764, [9963.95691, 9804.76072, 12613.39798, 15457.51387, 22582.08811,
-                            27909.40005, 43494.4758, 49840.86701, 25109.17142, 15546.80155,
+      (404411.61587925453, [9963.97791, 9804.76072, 12613.39798, 15457.51387, 22582.08811,
+                            27909.40005, 43494.4758, 49840.86701, 25109.19683, 15546.80155,
                             16923.11586, 35647.55255, 76875.57937, 19756.4749, 13885.63352,
                             9000.77984])),
      (GCL, (370863.6246093183,

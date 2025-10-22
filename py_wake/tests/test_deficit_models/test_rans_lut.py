@@ -34,24 +34,44 @@ def test_rans_lut_deficit():
                                                             0.80567201, 0.80495685])
     x_j = np.linspace(-1500, 1500, 500)
     y_j = np.linspace(-1500, 1500, 300)
-    flow_map70 = simres.flow_map(HorizontalGrid(x_j, y_j, h=70))
-    flow_map73 = simres.flow_map(HorizontalGrid(x_j, y_j, h=73))
-
-    X, Y = flow_map70.XY
-    Z70 = flow_map70.WS_eff_xylk[:, :, 0, 0]
-    Z73 = flow_map73.WS_eff_xylk[:, :, 0, 0]
 
     if 0:
+        flow_map70 = simres.flow_map(HorizontalGrid(x_j, y_j, h=70))
+        flow_map73 = simres.flow_map(HorizontalGrid(x_j, y_j, h=73))
+
+        X, Y = flow_map70.XY
+        Z70 = flow_map70.WS_eff_xylk[:, :, 0, 0]
+        Z73 = flow_map73.WS_eff_xylk[:, :, 0, 0]
+
         flow_map70.plot_wake_map(levels=np.arange(6, 10.5, .1))
         plt.plot(X[0], Y[140])
         plt.figure()
         plt.plot(X[0], Z70[140, :], label="Z=70m")
         plt.plot(X[0], Z73[140, :], label="Z=73m")
         plt.plot(X[0, 100:400:10], Z70[140, 100:400:10], '.')
-        print(list(np.round(Z70.data[140, 100:400:10], 4)))
-        print(list(np.round(Z73.data[140, 100:400:10], 4)))
+        print(np.round(Z70.data[140, 100:400:10], 4).tolist())
+        print(np.round(Z73.data[140, 100:400:10], 4).tolist())
         plt.legend()
         plt.show()
+
+    flow_map70 = simres.flow_map(HorizontalGrid(x_j[100:400:10], y_j[[140]], h=70))
+    flow_map73 = simres.flow_map(HorizontalGrid(x_j[100:400:10], y_j[[140]], h=73))
+
+    X, Y = flow_map70.XY
+    Z70 = flow_map70.WS_eff_xylk[0, :, 0, 0]
+    Z73 = flow_map73.WS_eff_xylk[0, :, 0, 0]
+
+    npt.assert_array_almost_equal(
+        Z70,
+        [10.0199, 10.0235, 10.0293, 10.0358, 9.8078, 5.5094, 4.718, 9.4776, 10.034, 10.0113, 10.0116, 10.027, 10.0617,
+         9.4429, 5.6, 8.8807, 10.0984, 10.0073, 9.9856, 9.96, 9.0589, 7.4311, 3.7803, 6.5824, 10.1399, 10.0271,
+         9.9978, 9.9919, 9.9907, 9.9906], 4)
+
+    npt.assert_array_almost_equal(
+        Z73,
+        [10.0198, 10.0234, 10.0291, 10.0351, 9.8118, 5.6347, 4.7181, 9.4902, 10.0332, 10.0113, 10.0116, 10.0267,
+         10.0607, 9.4732, 5.5569, 8.9562, 10.0969, 10.0073, 9.9858, 9.9601, 9.0821, 7.4662, 3.8426, 6.6404, 10.1375,
+         10.0268, 9.9979, 9.992, 9.9908, 9.9906], 4)
 
 
 def test_rans_lut():
@@ -71,26 +91,6 @@ def test_rans_lut():
                                                                 7.67200834, 6.95684497])
     npt.assert_array_almost_equal(simres.ct_ilk.flatten(), [0.79338104, 0.79388147, 0.8056662, 0.79307906, 0.80002604,
                                                             0.80567201, 0.80495685])
-    x_j = np.linspace(-1500, 1500, 500)
-    y_j = np.linspace(-1500, 1500, 300)
-    flow_map70 = simres.flow_map(HorizontalGrid(x_j, y_j, h=70))
-    flow_map73 = simres.flow_map(HorizontalGrid(x_j, y_j, h=73))
-
-    X, Y = flow_map70.XY
-    Z70 = flow_map70.WS_eff_xylk[:, :, 0, 0]
-    Z73 = flow_map73.WS_eff_xylk[:, :, 0, 0]
-
-    if 0:
-        flow_map70.plot_wake_map(levels=np.arange(6, 10.5, .1))
-        plt.plot(X[0], Y[140])
-        plt.figure()
-        plt.plot(X[0], Z70[140, :], label="Z=70m")
-        plt.plot(X[0], Z73[140, :], label="Z=73m")
-        plt.plot(X[0, 100:400:10], Z70[140, 100:400:10], '.')
-        print(list(np.round(Z70.data[140, 100:400:10], 4)))
-        print(list(np.round(Z73.data[140, 100:400:10], 4)))
-        plt.legend()
-        plt.show()
 
     # Test Power as RANS post step
     dataset = xr.open_dataset(demo_lut)
@@ -151,7 +151,8 @@ def test_rans_lut():
     npt.assert_array_almost_equal(simres.TI_eff.values.flatten(), TI_eff_expected, 6)
 
     # Test MOST shear, stable.
-    # WS_eff_star does not change since we not change the actual simulation using Site with MOSTShear and LUTs with stability
+    # WS_eff_star does not change since we not change the actual simulation
+    # using Site with MOSTShear and LUTs with stability
     aDControl2 = ADControl.from_lut([dataset, lut2], wts, ws_cutin=4, ws_cutout=25, dws=1.0, cal_TI=0.06, cal_zeta=0.5)
     ellipsys_power, WS_eff_star, ct_star = get_Ellipsys_equivalent_output(simres, aDControl2)
 
@@ -207,27 +208,6 @@ def test_rans_lut_multi_wd_ws():
 
     npt.assert_array_almost_equal(simres.WS_eff_ilk, np.moveaxis(power_ref, -1, 0))
     npt.assert_array_almost_equal(simres.ct_ilk, np.moveaxis(ct_ref, -1, 0))
-
-    x_j = np.linspace(-1500, 1500, 500)
-    y_j = np.linspace(-1500, 1500, 300)
-    flow_map70 = simres.flow_map(HorizontalGrid(x_j, y_j, h=70), wd=30, ws=10)
-    flow_map73 = simres.flow_map(HorizontalGrid(x_j, y_j, h=73), wd=30, ws=10)
-
-    X, Y = flow_map70.XY
-    Z70 = flow_map70.WS_eff_xylk[:, :, 0, 0]
-    Z73 = flow_map73.WS_eff_xylk[:, :, 0, 0]
-
-    if 0:
-        flow_map70.plot_wake_map(levels=np.arange(6, 10.5, .1))
-        plt.plot(X[0], Y[140])
-        plt.figure()
-        plt.plot(X[0], Z70[140, :], label="Z=70m")
-        plt.plot(X[0], Z73[140, :], label="Z=73m")
-        plt.plot(X[0, 100:400:10], Z70[140, 100:400:10], '.')
-        print(list(np.round(Z70.data[140, 100:400:10], 4)))
-        print(list(np.round(Z73.data[140, 100:400:10], 4)))
-        plt.legend()
-        plt.show()
 
     # Test Power as RANS post step
     dataset = xr.open_dataset(demo_lut)

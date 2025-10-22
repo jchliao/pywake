@@ -112,7 +112,7 @@ class BlockageDeficitModel(DeficitModel):
     def remove_wake(self, deficit_ijlk, dw_ijlk, cw_ijlk, D_src_il, wake_radius_ijlk, induc_ijlk=None):
         # indices in downstream where cw < wake_radius
         R_ijlk = (D_src_il / 2)[:, na, :, na]
-        iw = ((dw_ijlk / R_ijlk >= -self.limiter) & (cabs(cw_ijlk) <= wake_radius_ijlk))
+        iw = ((dw_ijlk / R_ijlk >= -self.limiter) & (cabs(cw_ijlk) <= wake_radius_ijlk) & (wake_radius_ijlk > 0))
         deficit_ijlk = np.where(iw, 0., deficit_ijlk)
 
         if induc_ijlk is not None:

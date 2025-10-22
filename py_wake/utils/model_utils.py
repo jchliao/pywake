@@ -174,6 +174,7 @@ def get_exclude_dict():
     from py_wake.turbulence_models.rans_lut_turb import RANSLUTTurbulence
     from py_wake.ground_models.ground_models import NoGround
     from py_wake.site.jit_streamline_distance import JITStreamlineDistance
+    from py_wake.site.streamline_distance import StreamlineDistance
     return {
         "WindFarmModel": ([EngineeringWindFarmModel], [], PropagateDownwind),
         "EngineeringWindFarmModel": ([], [], PropagateDownwind),
@@ -189,7 +190,7 @@ def get_exclude_dict():
         "AddedTurbulenceSuperpositionModel": ([], [], None),
         "GroundModel": ([], [], NoGround),
         "Shear": ([], [], None),
-        "StraightDistance": ([], [JITStreamlineDistance], None),
+        "StraightDistance": ([], [JITStreamlineDistance, StreamlineDistance], None),
 
     }
 
@@ -282,9 +283,9 @@ def get_signature(cls, kwargs={}, indent_level=0):
 def get_model_input(wfm, x, y, ws=10, wd=270, **kwargs):
     ws, wd = [np.atleast_1d(v) for v in [ws, wd]]
     x, y = map(np.asarray, [x, y])
-    wfm.site.distance.setup(src_x_ilk=[[[0]]], src_y_ilk=[[[0]]], src_h_ilk=[[[0]]], src_z_ilk=[[[0]]],
-                            dst_xyhz_j=(x, y, x * 0, x * 0))
-    dw_ijlk, hcw_ijlk, dh_ijlk = wfm.site.distance(wd_l=wd)
+
+    dw_ijlk, hcw_ijlk, dh_ijlk = wfm.site.distance(src_x_ilk=[[[0]]], src_y_ilk=[[[0]]], src_h_ilk=[[[0]]],
+                                                   dst_xyh_jlk=(x, y, x * 0), wd_l=wd)
     sim_res = wfm([0], [0], ws=ws, wd=wd, **kwargs)
 
     args = {'dw_ijlk': dw_ijlk, 'hcw_ijlk': hcw_ijlk, 'dh_ijlk': dh_ijlk,

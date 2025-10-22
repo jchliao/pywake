@@ -211,9 +211,6 @@ class Site(ABC):
                 Probability/weight
         """
 
-    def wt2wt_distances(self, WD_ilk=None, wd_l=None):
-        return self.distance(WD_ilk=WD_ilk, wd_l=wd_l)
-
     @abstractmethod
     def elevation(self, x_i, y_i):
         """Local terrain elevation (height above mean sea level)

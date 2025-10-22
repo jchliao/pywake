@@ -695,11 +695,10 @@ class SimulationResult(xr.Dataset):
                     if k in self:
                         wt_kwargs[k] = self[k].ilk()
                     elif k in {'dw_ijlk', 'hcw_ijlk', 'cw_ijlk', 'dh_ijlk'}:
-                        z_ilk = self.windFarmModel.site.elevation(self.x.ilk(), self.y.ilk())
-                        self.windFarmModel.site.distance.setup(self.x.ilk(), self.y.ilk(), self.h.ilk(), z_ilk)
-                        dist = {k: v for k, v in zip(['dw_ijlk', 'hcw_ijlk', 'cw_ijlk'],
-                                                     self.windFarmModel.site.distance(WD_ilk=self.WD.ilk(),
-                                                                                      wd_l=self.wd.values))}
+                        dist = {k: v for k, v in zip(
+                            ['dw_ijlk', 'hcw_ijlk', 'cw_ijlk'],
+                            self.windFarmModel.site.distance(self.x.ilk(), self.y.ilk(), self.h.ilk(),
+                                                             WD_ilk=self.WD.ilk(), wd_l=self.wd.values))}
                         wt_kwargs.update({k: v for k, v in dist.items() if k in lst})
                         if k == 'cw_ijlk':  # pragma: no cover
                             raise NotImplementedError()

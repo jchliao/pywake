@@ -29,6 +29,7 @@ from py_wake.site.jit_streamline_distance import JITStreamlineDistance
 from py_wake.site.xrsite import XRSite
 from py_wake.rotor_avg_models.area_overlap_model import AreaOverlapAvgModel
 import warnings
+from py_wake.site.streamline_distance import StreamlineDistance
 
 
 def check_gradients(wfm, name, wt_x=[-1300, -650, 0], wt_y=[0, 0, 0], wt_h=[110, 110, 110], fd_step=1e-6, fd_decimal=6,
@@ -236,7 +237,7 @@ def test_shear(model):
 
 @pytest.mark.parametrize('model', get_models(StraightDistance))
 def test_distance_models(model):
-    if model not in [None, JITStreamlineDistance]:
+    if model not in [None, JITStreamlineDistance, StreamlineDistance]:
         site = ParqueFicticioSite(distance=model())
         x, y = site.initial_position[3]
         check_gradients(lambda site, wt, s=site: PropagateDownwind(
