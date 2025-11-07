@@ -8,7 +8,8 @@ from py_wake.examples.data.hornsrev1 import V80
 from py_wake.examples.data.iea37._iea37 import IEA37_WindTurbines
 from py_wake.tests import npt
 from py_wake.utils import gradients
-from py_wake.utils.gradients import autograd, plot_gradients, fd, cs, hypot, cabs, interp, set_gradient_function
+from py_wake.utils.gradients import autograd, plot_gradients, fd, cs, hypot, cabs, interp, set_gradient_function, \
+    item_assign
 from py_wake.wind_turbines import WindTurbines
 from py_wake.wind_turbines import _wind_turbines
 from xarray.core.dataset import Dataset
@@ -505,3 +506,24 @@ def test_asarray_xarray():
         return ds.x.values * 2
 
     autograd(f)([2, 3, 4])
+
+
+@pytest.mark.parametrize('idx', [[0, 3, 4], slice(1, 6, 2)])
+@pytest.mark.parametrize('axis', [0, 1])
+def test_item_assign(idx, axis):
+
+    def f(x):
+        if axis == 0:
+            v = x[idx]
+        else:
+            v = x[:, idx]
+        x = item_assign(x + 0., idx=idx, values=v * 2, axis=axis)
+        return x.sum()
+
+    x = np.arange(56).reshape((8, 7))
+    v = x.take(np.arange(x.shape[axis])[idx], axis) * 2
+    npt.assert_array_equal(item_assign(x + 0., idx, values=v, axis=axis),
+                           item_assign(x + 0., idx, values=v, axis=axis, test=1))
+
+    npt.assert_array_almost_equal(fd(f)(x), cs(f)(x))
+    npt.assert_array_equal(cs(f)(x), autograd(f)(x))

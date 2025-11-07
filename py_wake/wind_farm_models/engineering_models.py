@@ -4,7 +4,7 @@ from py_wake import np
 from py_wake.superposition_models import SuperpositionModel, LinearSum, WeightedSum, CumulativeWakeSum, SquaredSum
 from py_wake.wind_farm_models.wind_farm_model import WindFarmModel
 from py_wake.deflection_models.deflection_model import DeflectionModel
-from py_wake.utils.gradients import cabs
+from py_wake.utils.gradients import cabs, item_assign
 from py_wake.rotor_avg_models.rotor_avg_model import RotorAvgModel, NodeRotorAvgModel, WSPowerRotorAvg
 from py_wake.turbulence_models.turbulence_model import TurbulenceModel
 from py_wake.deficit_models.deficit_model import ConvectionDeficitModel, BlockageDeficitModel, WakeDeficitModel
@@ -15,8 +15,9 @@ from py_wake.utils import gradients
 import warnings
 from py_wake.input_modifier_models.input_modifier_model import InputModifierModel
 from py_wake.deficit_models.no_wake import NoWakeDeficit
-from py_wake.utils.parallelization import get_map_func, get_starmap_func
+from py_wake.utils.parallelization import get_starmap_func
 import multiprocessing
+from py_wake.wind_farm_models.external_wind_farm_models import ExternalWindFarm
 
 
 class EngineeringWindFarmModel(WindFarmModel):
@@ -49,7 +50,8 @@ class EngineeringWindFarmModel(WindFarmModel):
     default_grid_resolution = 500
 
     def __init__(self, site, windTurbines: WindTurbines, wake_deficitModel, superpositionModel, rotorAvgModel=None,
-                 blockage_deficitModel=None, deflectionModel=None, turbulenceModel=None, inputModifierModels=[]):
+                 blockage_deficitModel=None, deflectionModel=None, turbulenceModel=None, inputModifierModels=[],
+                 externalWindFarms=[]):
 
         WindFarmModel.__init__(self, site, windTurbines)
         if not isinstance(inputModifierModels, (list, tuple)):
@@ -59,12 +61,14 @@ class EngineeringWindFarmModel(WindFarmModel):
                                   (blockage_deficitModel, BlockageDeficitModel, 'blockage_deficitModel'),
                                   (deflectionModel, DeflectionModel, 'deflectionModel'),
                                   (turbulenceModel, TurbulenceModel, 'turbulenceModel')] +
-                                 [(imm, InputModifierModel, 'inputModificierModels') for imm in inputModifierModels]):
+                                 [(imm, InputModifierModel, 'inputModificierModels') for imm in inputModifierModels] +
+                                 [(ewf, ExternalWindFarm, 'externalWindFarms') for ewf in externalWindFarms]):
             check_model(model, cls, name)
             if model is not None:
                 setattr(model, 'windFarmModel', self)
             setattr(self, name, model)
         self.inputModifierModels = inputModifierModels
+        self.externalWindFarms = externalWindFarms
 
         if isinstance(superpositionModel, (WeightedSum, CumulativeWakeSum)):
             assert isinstance(wake_deficitModel, ConvectionDeficitModel)
@@ -73,6 +77,8 @@ class EngineeringWindFarmModel(WindFarmModel):
                 "WeightedSum and CumulativeWakeSum only work with NodeRotorAvgModel-based rotor average models"
             assert not isinstance(wake_rotorAvgModel, WSPowerRotorAvg), \
                 'WeightedSum and CumulativeWakeSum does not work WSPowerRotorAvg'
+            assert len(externalWindFarms) == 0, \
+                'WeightedSum and CumulativeWakeSum does not work with ExternalWindFarms'
         # TI_eff requires a turbulence model
         assert 'TI_eff_ilk' not in wake_deficitModel.args4deficit or turbulenceModel
         self.wake_deficitModel = wake_deficitModel
@@ -114,6 +120,8 @@ class EngineeringWindFarmModel(WindFarmModel):
             self.args4all |= set(self.deflectionModel.args4deflection)
         for input_modifier in self.inputModifierModels:
             self.args4all |= set(input_modifier.args4model)
+        for ext_wf in self.externalWindFarms:
+            self.args4all |= set(ext_wf.args4model)
 
     def __str__(self):
         def name(o):
@@ -264,14 +272,15 @@ class EngineeringWindFarmModel(WindFarmModel):
     def _calc_wt_interaction(self, **kwargs):
         """calculate WT interaction"""
 
-    def get_map_args(self, x_j, y_j, h_j, sim_res_data, D_dst=0):
+    def get_map_args(self, x_j, y_j, h_j, lw, wd, ws, sim_res_data, D_dst=0):
         type_i = sim_res_data.type.values
         wt_d_i = self.windTurbines.diameter(type_i)
-        wd, ws = [np.atleast_1d(sim_res_data[k].values) for k in ['wd', 'ws']]
         if 'time' in sim_res_data:
             time = np.atleast_1d(sim_res_data['time'].values)
         else:
             time = False
+        if 'wd' in sim_res_data.dims:
+            sim_res_data = sim_res_data.sel(wd=wd)
         wt_x_ilk = sim_res_data['x'].ilk()
         WD_il = sim_res_data.WD.ilk()
 
@@ -283,26 +292,26 @@ class EngineeringWindFarmModel(WindFarmModel):
         def get_ilk(k):
             v = sim_res_data[k].ilk()
 
-            def wrap(l):
+            def wrap(l, j):
                 l_ = [l, slice(0, 1)][v.shape[1] == 1]
                 return v[:, l_]
             return wrap
         map_arg_funcs = {k.replace('CT', 'ct') + '_ilk': get_ilk(k)
                          for k in sim_res_data if k not in ['wd_bin_size', 'ws_l', 'ws_u']}
         map_arg_funcs.update({
-            'type_il': lambda l: type_i[:, na],
-            'D_src_il': lambda l: wt_d_i[:, na],
-            'D_dst_ijl': lambda l: np.zeros((1, 1, 1)) + D_dst,
-            'IJLK': lambda l=slice(None), I=I, J=J, L=L, K=K: (I, J, len(np.arange(L)[l]), K)})
+            'type_il': lambda l, j: type_i[:, na],
+            'D_src_il': lambda l, j: wt_d_i[:, na],
+            'D_dst_ijl': lambda l, j: np.zeros((1, 1, 1)) + D_dst,
+            'IJLK': lambda l=slice(None), j=slice(None), I=I, J=J, L=L, K=K: (I, len(np.arange(J)[j]), len(np.arange(L)[l]), K)})
         for k in ['WS', 'WD', 'TI']:
             if k in sim_res_data:
-                if k + '_ilk' in sim_res_data.localWind.overwritten:
+                if k + '_ilk' in lw.overwritten:
                     if 'wt' not in sim_res_data[k].dims and 'i' not in sim_res_data[k].dims:
                         lw_j.add_ilk(k + "_ilk", sim_res_data[k])
                     else:
                         warnings.warn(
                             f"The WT dependent {k} that was provided for the simulation is not available at the flow map points and therefore ignored")
-        return map_arg_funcs, lw_j, wd, WD_il
+        return map_arg_funcs, lw_j, WD_il
 
     def _get_flow_l(self, model_kwargs, wt_x_ilk, wt_y_ilk, wt_h_ilk, x_j, y_j, h_j, wd, WD_ilk, WS_jlk, TI_jlk):
         dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(wt_x_ilk, wt_y_ilk, wt_h_ilk, wd_l=wd, WD_ilk=WD_ilk,
@@ -341,6 +350,15 @@ class EngineeringWindFarmModel(WindFarmModel):
             deficit_ijlk, blockage_ijlk = self._calc_deficit(**model_kwargs)
 
         # ===============================================================================================================
+        # Replace deficit from external farms
+        # ===============================================================================================================
+        for i, ewf in enumerate(self.externalWindFarms, len(wt_x_ilk) - len(self.externalWindFarms)):
+            deficit_ijlk[i] = ewf(i=i, l=np.ones(len(wd), dtype=bool), deficit_jlk=None,
+                                  # **{**model_kwargs, 'dw_ijlk': sdw_ijlk, 'hcw_ijlk': shcw_ijlk, 'dh_ijlk': sdh_ijlk}
+                                  **model_kwargs,
+                                  dst_xyh_jlk=[x_j[:, na, na], y_j[:, na, na], h_j[:, na, na]]
+                                  )
+        # ===============================================================================================================
         # Calculate added Turbulence
         # ===============================================================================================================
         if self.turbulenceModel:
@@ -376,7 +394,8 @@ class EngineeringWindFarmModel(WindFarmModel):
         return WS_eff_jlk, TI_eff_jlk
 
     def _aep_map(self, x_j, y_j, h_j, type_j, sim_res_data, memory_GB=1, n_cpu=1):
-        lw_j, WS_eff_jlk, _ = self._flow_map(x_j, y_j, h_j, sim_res_data, memory_GB=memory_GB, n_cpu=n_cpu)
+        lw_j, WS_eff_jlk, _ = self._flow_map(x_j, y_j, h_j, sim_res_data.localWind, sim_res_data.wd.values,
+                                             sim_res_data.ws.values, sim_res_data, memory_GB=memory_GB, n_cpu=n_cpu)
         power_kwargs = {}
         if 'type' in (self.windTurbines.powerCtFunction.required_inputs +
                       self.windTurbines.powerCtFunction.optional_inputs):
@@ -386,9 +405,10 @@ class EngineeringWindFarmModel(WindFarmModel):
         aep_j = (power_jlk * lw_j.P_ilk).sum((1, 2))
         return aep_j * 365 * 24 * 1e-9
 
-    def _flow_map(self, x_j, y_j, h_j, sim_res_data, D_dst=0, memory_GB=1, n_cpu=1):
+    def _flow_map(self, x_j, y_j, h_j, lw, wd, ws, sim_res_data, D_dst=0, memory_GB=1, n_cpu=1):
         """call this function via SimulationResult.flow_map"""
-        arg_funcs, lw_j, wd, WD_il = self.get_map_args(x_j, y_j, h_j, sim_res_data, D_dst=D_dst)
+        wd, ws = np.atleast_1d(wd), np.atleast_1d(ws)
+        arg_funcs, lw_j, WD_il = self.get_map_args(x_j, y_j, h_j, lw, wd, ws, sim_res_data, D_dst=D_dst)
         I, J, L, K = arg_funcs['IJLK']()
 
         if I == 0:
@@ -406,17 +426,13 @@ class EngineeringWindFarmModel(WindFarmModel):
                                     unit='wd', leave=0)
         wt_x_ilk, wt_y_ilk, wt_h_ilk = [sim_res_data[k].ilk() for k in ['x', 'y', 'h']]
 
-        xyh_j_lst = list(zip(*[np.array_split(x_j, j_chunks),
-                               np.array_split(y_j, j_chunks),
-                               np.array_split(h_j, j_chunks)]))
-
-        l_iter = [({k: arg_funcs[k](l) for k in arg_funcs},
+        l_iter = [({k: arg_funcs[k](l, j) for k in arg_funcs},
                    *[(v, v[:, slice(l[0], l[-1] + 1)])[np.shape(v)[1] == L] for v in [wt_x_ilk, wt_y_ilk, wt_h_ilk]],
-                   x_j_, y_j_, h_j_, wd[l], WD_il[:, l],
+                   x_j[j], y_j[j], h_j[j], wd[l], WD_il[:, l],
                    lw_j.WS_ilk[:, (l, [0])[lw_j.WS_ilk.shape[1] == 1]],
                    lw_j.TI_ilk[:, (l, [0])[lw_j.TI_ilk.shape[1] == 1]])
                   for l in np.array_split(np.arange(L).astype(int), wd_chunks)
-                  for x_j_, y_j_, h_j_ in xyh_j_lst]
+                  for j in np.array_split(np.arange(J).astype(int), j_chunks)]
         WS_eff_jlk, TI_eff_jlk = zip(*map_func(self._get_flow_l, l_iter))
         WS_eff_jlk = np.concatenate([np.concatenate(WS_eff_jlk[i * j_chunks:(i + 1) * j_chunks], 0)
                                      for i in range(wd_chunks)], 1)
@@ -698,6 +714,7 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
                              'WD_ilk': lambda: WD_mk[m][na],
                              **{k + '_ilk': lambda k=k: ilk2mk(kwargs[k + '_ilk'])[m][na] for k in 'xyh'},
                              'type_il': lambda: kwargs['type_i'][i_wt_l][na]
+
                              }
                 model_kwargs = {k: arg_funcs[k]() for k in self.args4all if k in arg_funcs}
 
@@ -707,9 +724,10 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
 
                 def get_pos(v_ilk, i_wt_l, i_wd_l):
                     return v_ilk[i_wt_l, np.minimum(i_wd_l, v_ilk.shape[1] - 1).astype(int)]
+                dst_xyh_jlk = [get_pos(kwargs[k + '_ilk'], i_dw.T, i_wd_l) for k in 'xyh']
                 dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(
                     *[get_pos(kwargs[k + '_ilk'], i_wt_l, i_wd_l)[na] for k in 'xyh'], wd_l=wd, WD_ilk=WD_mk[m][na],
-                    dst_xyh_jlk=[get_pos(kwargs[k + '_ilk'], i_dw.T, i_wd_l) for k in 'xyh'])
+                    dst_xyh_jlk=dst_xyh_jlk)
 
                 for inputModidifierModel in self.inputModifierModels:
                     modified_input_dict = inputModidifierModel(**model_kwargs)
@@ -762,6 +780,17 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
                         deficit = np.zeros_like(sigma_sqr)
                 else:
                     deficit, blockage = self._calc_deficit(**model_kwargs)
+
+                    for i, ewf in enumerate(self.externalWindFarms, I - len(self.externalWindFarms)):
+                        # print(i)
+                        deficit = ewf(i=0, l=i_wt_l == i,
+                                      deficit_jlk=deficit[0],
+
+                                      **model_kwargs,
+                                      # **{**model_kwargs, 'dw_ijlk': sdw_ijlk, 'hcw_ijlk': shcw_ijlk, 'dh_ijlk': sdh_ijlk}
+                                      dst_xyh_jlk=dst_xyh_jlk
+                                      )[na]
+
                     if self.blockage_deficitModel:
                         blockage_nk.append(blockage[0])
                 deficit_nk.append(deficit[0])
@@ -796,7 +825,8 @@ class PropagateDownwind(PropagateUpDownIterative):
     def __init__(self, site, windTurbines, wake_deficitModel,
                  superpositionModel=LinearSum(),
                  deflectionModel=None, turbulenceModel=None, rotorAvgModel=None,
-                 inputModifierModels=[]):
+                 inputModifierModels=[],
+                 externalWindFarms=[]):
         """Initialize flow model
 
         Parameters
@@ -820,7 +850,8 @@ class PropagateDownwind(PropagateUpDownIterative):
         """
         EngineeringWindFarmModel.__init__(self, site, windTurbines, wake_deficitModel, superpositionModel, rotorAvgModel,
                                           blockage_deficitModel=None, deflectionModel=deflectionModel,
-                                          turbulenceModel=turbulenceModel, inputModifierModels=inputModifierModels)
+                                          turbulenceModel=turbulenceModel, inputModifierModels=inputModifierModels,
+                                          externalWindFarms=externalWindFarms)
         self.direction = 'down'
 
     def _calc_deficit(self, dw_ijlk, **kwargs):
@@ -840,7 +871,7 @@ class All2AllIterative(EngineeringWindFarmModel):
     def __init__(self, site, windTurbines, wake_deficitModel,
                  superpositionModel=LinearSum(),
                  blockage_deficitModel=None, deflectionModel=None, turbulenceModel=None,
-                 convergence_tolerance=1e-6, rotorAvgModel=None, inputModifierModels=[]):
+                 convergence_tolerance=1e-6, rotorAvgModel=None, inputModifierModels=[], externalWindFarms=[]):
         """Initialize flow model
 
         Parameters
@@ -871,7 +902,8 @@ class All2AllIterative(EngineeringWindFarmModel):
         """
         EngineeringWindFarmModel.__init__(self, site, windTurbines, wake_deficitModel, superpositionModel, rotorAvgModel,
                                           blockage_deficitModel=blockage_deficitModel, deflectionModel=deflectionModel,
-                                          turbulenceModel=turbulenceModel, inputModifierModels=inputModifierModels)
+                                          turbulenceModel=turbulenceModel, inputModifierModels=inputModifierModels,
+                                          externalWindFarms=externalWindFarms)
         self.convergence_tolerance = convergence_tolerance
 
     def _calc_wt_interaction(self, ws, wd, WD_ilk, WS_ilk, TI_ilk,
@@ -907,6 +939,8 @@ class All2AllIterative(EngineeringWindFarmModel):
         diff_lk_last = None
         max_diff_last = None
         a = 1
+
+        dst_xyh_jlk = [kwargs[k + '_ilk'] for k in 'xyh']
         dw_iilk, hcw_iilk, dh_iilk = self.site.distance(*[kwargs[k + '_ilk'] for k in 'xyh'], wd_l=wd, WD_ilk=WD_ilk)
         kwargs['WD_ilk'] = WD_ilk
 
@@ -1010,6 +1044,11 @@ class All2AllIterative(EngineeringWindFarmModel):
                 deficit_iilk, blockage_iilk = self._calc_deficit(**model_kwargs)
             else:
                 deficit_iilk, blockage_iilk = self._calc_deficit(**model_kwargs)
+
+            for i, ewf in enumerate(self.externalWindFarms, I - len(self.externalWindFarms)):
+                deficit_jlk = ewf(i=i, l=np.ones(L, dtype=bool), deficit_jlk=None, dst_xyh_jlk=dst_xyh_jlk,
+                                  **model_kwargs)
+                deficit_iilk = item_assign(deficit_iilk, idx=i, values=deficit_jlk)
 
             # set own deficit to 0
             deficit_iilk *= i2i_zero

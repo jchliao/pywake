@@ -198,16 +198,19 @@ class FlowMap(FlowBox):
 
         if plot_windturbines:
             self.plot_windturbines(normalize_with=normalize_with, ax=ax)
+            for ewf in self.windFarmModel.externalWindFarms:
+                ewf.plot(ax=ax)
         ax.axis('equal')
         return c
 
     def plot_windturbines(self, normalize_with=1, ax=None):
         fm = self.windFarmModel
-
+        n_ewf = len(fm.externalWindFarms)
         # mean over wd and ws if present
-        x_i = self.simulationResult.x.mean(set(self.simulationResult.x.dims) - {'wt'}).values
-        y_i = self.simulationResult.y.mean(set(self.simulationResult.x.dims) - {'wt'}).values
-        type_i = self.simulationResult.type.data
+        n = len(self.simulationResult.wt) - n_ewf
+        x_i = self.simulationResult.x.mean(set(self.simulationResult.x.dims) - {'wt'}).values[:n]
+        y_i = self.simulationResult.y.mean(set(self.simulationResult.x.dims) - {'wt'}).values[:n]
+        type_i = self.simulationResult.type.values[:n]
         if self.plane[0] in ['XZ', "YZ"]:
             h_i = self.simulationResult.h.values
             x_ilk, y_ilk = self.simulationResult.x.ilk(), self.simulationResult.y.ilk()
@@ -503,6 +506,7 @@ class XZGrid(YZGrid):
 
 class Points(Grid):
     def __init__(self, x, y, h):
+        x, y, h = [np.atleast_1d(v) for v in [x, y, h]]
         assert len(x) == len(y) == len(h)
         self.x = x
         self.y = y

@@ -52,16 +52,16 @@ def close_pools():  # pragma: no cover
         pool.close()
 
 
-def get_map_func(n_cpu, verbose, desc='', unit='it'):
-    n_cpu = n_cpu or multiprocessing.cpu_count()
-    if n_cpu > 1:
-        map_func = get_pool_map(n_cpu)
-    else:
-        from tqdm import tqdm
-
-        def map_func(f, iter):
-            return tqdm(map(f, iter), desc=desc, unit=unit, total=len(iter), disable=not verbose)
-    return map_func
+# def get_map_func(n_cpu, verbose, desc='', unit='it'):
+#     n_cpu = n_cpu or multiprocessing.cpu_count()
+#     if n_cpu > 1:
+#         map_func = get_pool_map(n_cpu)
+#     else:
+#         from tqdm import tqdm
+#
+#         def map_func(f, iter):
+#             return tqdm(map(f, iter), desc=desc, unit=unit, total=len(iter), disable=not verbose)
+#     return map_func
 
 
 def get_starmap_func(n_cpu, verbose, desc='', unit='it', leave=True):

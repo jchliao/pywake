@@ -97,6 +97,7 @@ PyWake 2.5.0: An open-source wind farm simulation tool. DTU Wind, Technical Univ
 	:caption: Features
 
         notebooks/RunWindFarmSimulation
+        notebooks/ExternalWindFarms
         notebooks/gradients_parallellization
         notebooks/Optimization
         notebooks/YawMisalignment

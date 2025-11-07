@@ -31,18 +31,18 @@ class StreamlineDistance(StraightDistance):
     def __call__(self, src_x_ilk, src_y_ilk, src_h_ilk, wd_l=None, WD_ilk=None, dst_xyh_jlk=None):
         (src_x_ilk, src_y_ilk, src_h_ilk), (dst_x_jlk, dst_y_jlk, dst_h_jlk) = self.get_pos(
             src_x_ilk, src_y_ilk, src_h_ilk, wd_l, WD_ilk, dst_xyh_jlk)
-        assert src_x_ilk.shape[1:] == (1, 1), 'StreamlineDistance does not support flowcase dependent positions'
+        assert src_x_ilk.shape[2] == 1, 'StreamlineDistance does not support flowcase dependent positions'
 
         start_points_m = np.array([src_x_ilk, src_y_ilk, src_h_ilk])[:, :, 0, 0].T
 
         dw_ijlk, hcw_ijlk, dh_ijlk = StraightDistance.__call__(self, src_x_ilk, src_y_ilk, src_h_ilk, wd_l=wd_l,
                                                                dst_xyh_jlk=dst_xyh_jlk)
-
         src_z_ilk = self.site.elevation(src_x_ilk, src_y_ilk)
         dst_z_jlk = self.site.elevation(dst_x_jlk, dst_y_jlk)
         dz_ijlk = dst_z_jlk[na, :] - src_z_ilk[:, na]
 
         # +0 ~ autograd safe copy (broadcast_to returns readonly array)
+        dh_ijlk = np.broadcast_to(dh_ijlk, dw_ijlk.shape) + 0.
         dz_ijlk = np.broadcast_to(dz_ijlk, dw_ijlk.shape) + 0.
         I, J, L, K = dw_ijlk.shape
         dw_mj, hcw_mj, dh_mj, dz_mj = [np.moveaxis(v, 1, 2).reshape(I * L, J)
@@ -72,7 +72,7 @@ class StreamlineDistance(StraightDistance):
         # we need to subtract elevation differences, dz
         dh_mj += dz_mj
 
-        return [v.reshape((I, J, L, K)) for v in [dw_mj, hcw_mj, dh_mj]]
+        return [np.moveaxis(v.reshape((I, L, J, 1)), 2, 1) for v in [dw_mj, hcw_mj, dh_mj]]
 
 
 def main():

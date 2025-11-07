@@ -184,6 +184,7 @@ class MinimalisticWindFarmModel(WindFarmModel, MinimalisticPredictionModel):
         max_cp = max_cp or windTurbines.max_cp
         ws_cutin = ws_cutin or getattr(windTurbines, 'ws_cutin', 4)
         ws_cutout = ws_cutout or getattr(windTurbines, 'ws_cutout', 25)
+        self.externalWindFarms = []
 
         MinimalisticPredictionModel.__init__(self, correction_factor, latitude, CP=max_cp,
                                              Uin=ws_cutin, Uout=ws_cutout)

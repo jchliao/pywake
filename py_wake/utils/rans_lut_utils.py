@@ -213,7 +213,8 @@ def get_Ellipsys_equivalent_output(sim_res, aDControl, flowmap_maxpoints=None,
         sim_res_wd = sim_res.isel(wd=l)
         for k in sim_res.__slots__:
             setattr(sim_res_wd, k, getattr(sim_res, k))
-        WS_eff_jlk = np.concatenate([sim_res.windFarmModel._flow_map(*pos_j.T, sim_res_wd)[1]
+        wd, ws = sim_res_wd.wd.values, sim_res_wd.ws.values
+        WS_eff_jlk = np.concatenate([sim_res.windFarmModel._flow_map(*pos_j.T, sim_res.localWind, wd, ws, sim_res_wd)[1]
                                      for pos_j in np.array_split(cxyzg_xj.T, nflowmaps)])
 
         # Integrate U over AD

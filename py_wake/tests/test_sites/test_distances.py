@@ -303,7 +303,7 @@ def test_distance_plot():
     plt.close('all')
 
 
-def test_JITStreamlinesparquefictio():
+def test_Streamlinesparquefictio():
     site = ParqueFicticioSite()
     wt = IEA37_WindTurbines()
     vf3d = VectorField3D.from_WaspGridSite(site)
@@ -331,7 +331,7 @@ def test_JITStreamlinesparquefictio():
         plt.show()
 
 
-def test_JITStreamlinesparquefictio_yz():
+def test_Streamlinesparquefictio_yz():
     site = ParqueFicticioSite()
     site.ds.Turning[:] *= 0
     # site.ds.flow_inc[:] *= 5
