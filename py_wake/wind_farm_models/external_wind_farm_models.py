@@ -1,14 +1,16 @@
-import numpy as np
-from numpy import newaxis as na
-import matplotlib.pyplot as plt
-from py_wake.utils.gradients import item_assign
-from py_wake.utils.model_utils import Model
 from abc import ABC, abstractmethod
-from py_wake.flow_map import Points
+
+import matplotlib.pyplot as plt
+import numpy as np
 import xarray as xr
+from numpy import newaxis as na
 from scipy.interpolate import RegularGridInterpolator as RGI
 from tqdm import tqdm
+
+from py_wake.flow_map import Points
 from py_wake.site.distance import StraightDistance
+from py_wake.utils.gradients import item_assign
+from py_wake.utils.model_utils import Model
 from py_wake.utils.xarray_utils import sel_interp_all
 
 
@@ -24,6 +26,16 @@ class ExternalWindFarm(Model, ABC):
             self.wt_h = windTurbines.hub_height(windTurbines.types())
         self.wf_h = np.mean(self.wt_h)
         self.windTurbines = windTurbines
+
+    def set_include_wd(self, include_wd):
+        if callable(include_wd):
+            self.include_wd_func = include_wd
+        else:
+            assert isinstance(include_wd, (int, float, list, tuple, np.ndarray))
+
+            def include_wd_func(wd):
+                return np.round(wd) in set(np.asarray(include_wd).tolist())
+            self.include_wd_func = include_wd_func
 
     def rel2abs(self, dw, hcw, dh, WD):
         theta = np.deg2rad(270 - WD)
@@ -46,16 +58,8 @@ class ExternalWFMWindFarm(ExternalWindFarm):
     def __init__(self, name, windFarmModel, wt_x, wt_y, wt_h=None, type=0, include_wd=np.arange(360), **kwargs):
         self.wfm = windFarmModel
         self.wfm_kwargs = {**kwargs, 'x': wt_x, 'y': wt_y, 'h': wt_h, 'type': type}
-        self.include_wd = include_wd
+        self.set_include_wd(include_wd)
         ExternalWindFarm.__init__(self, name, windFarmModel.windTurbines, wt_x, wt_y, wt_h)
-
-    @property
-    def include_wd(self):
-        return self._include_wd
-
-    @include_wd.setter
-    def include_wd(self, wd_lst):
-        self._include_wd = set(np.asarray(wd_lst).tolist())
 
     def get_relevant_wd(self, target_xyh, ws=10, tol=1e-6):
         x, y, h = target_xyh
@@ -71,7 +75,7 @@ class ExternalWFMWindFarm(ExternalWindFarm):
                  WD_ilk, dst_xyh_jlk, IJLK, dw_ijlk, hcw_ijlk, dh_ijlk, **_):
         I, J, L, K = IJLK
         WD_l = np.round(WD_ilk[np.minimum(i, len(WD_ilk) - 1), :, 0])
-        m_lst = [m for m, wd in enumerate(WD_l) if l[m] and wd in self.include_wd]
+        m_lst = [m for m, wd in enumerate(WD_l) if l[m] and self.include_wd_func(wd)]
         if deficit_jlk is None:
             deficit_jlk = np.zeros((J, L, K))
         if m_lst:
@@ -107,7 +111,7 @@ class ExternalWFMWindFarm(ExternalWindFarm):
                 def get_deficit_l(m):
                     x_j, y_j, h_j = [np.broadcast_to(v_jlk, (J, L, K))[:, m] for v_jlk in dst_xyh_jlk]
                     WD = WD_l[m]
-                    WS_eff = WS_eff_ilk[0, m]
+                    WS_eff = WS_eff_ilk[i, m]
                     sr = sel_interp_all(sim_res)(dict(wd=WD, ws=WS_eff))
                     lw_j, WS_eff_jlk, TI_eff_jlk = self.wfm._flow_map(x_j, y_j, h_j, sim_res.localWind, WD, WS_eff, sr)
                     return lw_j.WS_ilk[:, 0] - WS_eff_jlk[:, 0]
@@ -118,11 +122,13 @@ class ExternalWFMWindFarm(ExternalWindFarm):
 
 
 class ExternalXRAbsWindFarm(ExternalWindFarm):
-    def __init__(self, name, ds, windTurbines, wt_x, wt_y, relative_distance=True):
+    def __init__(self, name, ds, windTurbines, wt_x, wt_y, relative_distance=True, include_wd=None):
         ExternalWindFarm.__init__(self, name, windTurbines, wt_x, wt_y)
         x = [ds.x.values, ds.y.values, ds.h.values, ds.wd.values, ds.ws.values]
         self.deficit_interp = RGI(x, ds.deficit.values, bounds_error=False)
-        self.include_wd = ds.wd.values
+        if include_wd is None:
+            include_wd = ds.wd.values
+        self.set_include_wd(include_wd)
         self.relative_distance = relative_distance
 
     def to_xarray(self):
@@ -151,7 +157,7 @@ class ExternalXRAbsWindFarm(ExternalWindFarm):
                  WD_ilk, IJLK, dst_xyh_jlk, **_):
         I, J, L, K = IJLK
         WD_l = WD_ilk[np.minimum(i, len(WD_ilk) - 1), :, 0]
-        m_lst = [m for m, wd in enumerate(WD_l) if l[m] and np.round(wd) in self.include_wd]
+        m_lst = [m for m, wd in enumerate(WD_l) if l[m] and self.include_wd_func(wd)]
         if deficit_jlk is None:
             deficit_jlk = np.zeros((J, L, K))
         if m_lst:
@@ -219,7 +225,7 @@ class ExternalXRRelWindFarm(ExternalXRAbsWindFarm):
                  WD_ilk, IJLK, dst_xyh_jlk, **_):
         I, J, L, K = IJLK
         WD_l = WD_ilk[np.minimum(i, len(WD_ilk) - 1), :, 0]
-        m_lst = [m for m, wd in enumerate(WD_l) if l[m] and np.round(wd) in self.include_wd]
+        m_lst = [m for m, wd in enumerate(WD_l) if l[m] and self.include_wd_func(wd)]
         if deficit_jlk is None:
             deficit_jlk = np.zeros((J, L, K))
         if not self.relative_distance:

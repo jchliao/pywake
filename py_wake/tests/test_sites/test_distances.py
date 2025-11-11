@@ -1,23 +1,31 @@
-from py_wake import np
-from numpy import newaxis as na
-from py_wake.tests import npt
-from py_wake.site.distance import StraightDistance, TerrainFollowingDistance
-from py_wake.site._site import UniformSite
-import pytest
-from py_wake.examples.data.iea37._iea37 import IEA37_WindTurbines
-from py_wake import NOJ
-from py_wake.examples.data.ParqueFicticio import ParqueFicticioSite
-from py_wake.flow_map import HorizontalGrid, XYGrid, XZGrid, Points
-import matplotlib.pyplot as plt
-from py_wake.utils.streamline import VectorField3D
-from py_wake.examples.data.hornsrev1 import V80
-
-from py_wake.tests.test_wind_farm_models.test_enginering_wind_farm_model import OperatableV80
-from py_wake.wind_farm_models.engineering_models import PropagateDownwind, All2AllIterative
-from py_wake.deficit_models.gaussian import BastankhahGaussianDeficit, BastankhahGaussian
-from py_wake.deficit_models.utils import ct2a_mom1d
 import warnings
+
+import matplotlib.pyplot as plt
+import pytest
+from numpy import newaxis as na
+
+from py_wake import NOJ, np
+from py_wake.deficit_models.gaussian import (
+    BastankhahGaussian,
+    BastankhahGaussianDeficit,
+)
+from py_wake.deficit_models.utils import ct2a_mom1d
+from py_wake.examples.data.hornsrev1 import V80
+from py_wake.examples.data.iea37._iea37 import IEA37_WindTurbines
+from py_wake.examples.data.ParqueFicticio import ParqueFicticioSite
+from py_wake.flow_map import HorizontalGrid, Points, XYGrid, XZGrid
+from py_wake.site._site import UniformSite
+from py_wake.site.distance import StraightDistance, TerrainFollowingDistance
 from py_wake.site.streamline_distance import StreamlineDistance
+from py_wake.tests import npt
+from py_wake.tests.test_wind_farm_models.test_enginering_wind_farm_model import (
+    OperatableV80,
+)
+from py_wake.utils.streamline import VectorField3D
+from py_wake.wind_farm_models.engineering_models import (
+    All2AllIterative,
+    PropagateDownwind,
+)
 
 
 class FlatSite(UniformSite):

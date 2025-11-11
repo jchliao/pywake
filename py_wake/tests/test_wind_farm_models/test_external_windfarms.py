@@ -1,25 +1,29 @@
 import os
 
-from numpy import newaxis as na
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import xarray as xr
+from numpy import newaxis as na
+
 from py_wake.deficit_models import BastankhahGaussianDeficit, SelfSimilarityDeficit2020
-from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
-from py_wake.flow_map import XYGrid, Points
+from py_wake.examples.data.hornsrev1 import V80, Hornsrev1Site
+from py_wake.flow_map import Points, XYGrid
 from py_wake.site.streamline_distance import StreamlineDistance
 from py_wake.superposition_models import LinearSum
 from py_wake.tests import npt
 from py_wake.utils import layouts
 from py_wake.utils.plotting import setup_plot
-from py_wake.utils.profiling import timeit, profileit
+from py_wake.utils.profiling import profileit, timeit
 from py_wake.utils.streamline import VectorField3D
-from py_wake.wind_farm_models import PropagateDownwind, All2AllIterative
-from py_wake.wind_farm_models.external_wind_farm_models import ExternalWindFarm, ExternalWFMWindFarm, \
-    ExternalXRAbsWindFarm, ExternalXRRelWindFarm
+from py_wake.wind_farm_models import All2AllIterative, PropagateDownwind
+from py_wake.wind_farm_models.external_wind_farm_models import (
+    ExternalWFMWindFarm,
+    ExternalWindFarm,
+    ExternalXRAbsWindFarm,
+    ExternalXRRelWindFarm,
+)
 from py_wake.wind_turbines import WindTurbines
-import xarray as xr
 
 
 def get_wfm(externalWindFarms=[], wfm_cls=PropagateDownwind, site=Hornsrev1Site(), blockage=False):
@@ -30,7 +34,7 @@ def get_wfm(externalWindFarms=[], wfm_cls=PropagateDownwind, site=Hornsrev1Site(
                   superpositionModel=LinearSum(),
                   externalWindFarms=externalWindFarms)
     if blockage:
-        wfm_cls == All2AllIterative
+        wfm_cls = All2AllIterative
         kwargs['blockage_deficitModel'] = SelfSimilarityDeficit2020()
     return wfm_cls(**kwargs)
 
@@ -117,9 +121,11 @@ def test_functionality():
         plt.show()
     plt.close('all')
 
-    npt.assert_array_equal(list(ext_farm[0].include_wd), np.arange(225, 315))
-    ext_farm[0].include_wd = np.arange(225, 300)
-    npt.assert_array_equal(np.sort(list(ext_farm[0].include_wd)), np.arange(225, 300))
+    npt.assert_array_equal([wd for wd in np.arange(360) if ext_farm[0].include_wd_func(wd)], np.arange(225, 315))
+    ext_farm[0].set_include_wd(np.arange(225, 300))
+    npt.assert_array_equal([wd for wd in np.arange(360) if ext_farm[0].include_wd_func(wd)], np.arange(225, 300))
+    ext_farm[0].set_include_wd(lambda wd: 235 <= wd <= 245)
+    npt.assert_array_equal([wd for wd in np.arange(360) if ext_farm[0].include_wd_func(wd)], np.arange(235, 246))
 
     npt.assert_array_equal(ext_farm[0].get_relevant_wd((wf_x, wf_y, wts.hub_height())), np.arange(236, 305))
     npt.assert_array_equal(ext_farm[0].get_relevant_wd((wf_x, wf_y, wts.hub_height()), ws=18), np.arange(237, 304))
@@ -127,6 +133,55 @@ def test_functionality():
 
     ext_farm = setup_ext_farms(ExternalXRAbsWindFarm, neighbour_x_y_angle[:1])
     assert ext_farm[0].to_xarray().deficit.shape == (20, 20, 1, 90, 23)
+
+
+def test_cluster_interaction():
+    wf_x, wf_y = layouts.circular([1, 5, 12, 18], 1800)
+    No_neighbours = 2
+    neighbour_x_y_angle = [(wf_x - 6000 * i, wf_y, 270) for i in range(1, No_neighbours + 1)]
+    neighbour_x, neighbour_y, _ = zip(*neighbour_x_y_angle)
+    all_x, all_y = np.r_[wf_x, np.array(neighbour_x).flatten()], np.r_[wf_y, np.array(neighbour_y).flatten()]
+
+    types = [v for i in range(No_neighbours + 1) for v in [i] * len(wf_x)]
+    wd = 270
+    wfm_ref = get_wfm()
+    sim_res_ref = wfm_ref(all_x, all_y, type=types, wd=wd, ws=10)
+
+    ext_farms = setup_ext_farms(ExternalWFMWindFarm, neighbour_x_y_angle)
+    wfm = get_wfm(ext_farms)
+    sim_res_ext = wfm(wf_x, wf_y, type=0, wd=wd, ws=10)
+    if 0:
+        grid = XYGrid(x=np.linspace(-15000, 3000, 150), y=np.linspace(-2500, 2500, 100))
+        fm_ref = sim_res_ref.flow_map(grid)
+        fm_ref.plot_wake_map(levels=np.linspace(4, 10, 50))
+        setup_plot(grid=False, figsize=(12, 3), axis='scaled')
+        plt.show()
+    npt.assert_allclose(sim_res_ext.Power[:len(wf_x)].sum().item(),
+                        sim_res_ref.Power[:len(wf_x)].sum().item(), atol=26000)
+
+
+def test_cluster_blockage():
+    wf_x, wf_y = layouts.circular([1, 5, 12, 18], 1800)
+
+    No_neighbours = 1
+    neighbour_x_y_angle = [(wf_x - 6000 * i, wf_y, 270) for i in range(1, No_neighbours + 1)]
+    neighbour_x, neighbour_y, _ = zip(*neighbour_x_y_angle)
+    all_x, all_y = np.r_[wf_x, np.array(neighbour_x).flatten()], np.r_[wf_y, np.array(neighbour_y).flatten()]
+    types = [v for i in range(No_neighbours + 1) for v in [i] * len(wf_x)]
+
+    wfm_ref = get_wfm(blockage=True)
+    sim_res_ref = wfm_ref(all_x, all_y, type=types, wd=270, ws=10)
+
+    ext_farms = setup_ext_farms(ExternalWFMWindFarm, neighbour_x_y_angle, wfm=wfm_ref)
+    wfm = get_wfm(ext_farms, blockage=True)
+    sim_res_ext = wfm(wf_x, wf_y, type=0, wd=270, ws=10)
+
+    # all WT without blockage
+    npt.assert_allclose(sim_res_ref.Power[:len(wf_x)].sum().item(),
+                        get_wfm()(all_x, all_y, wd=270, ws=10).Power[:len(wf_x)].sum().item(), atol=9000)
+    # Current + external farms with blockage
+    npt.assert_allclose(sim_res_ref.Power[:len(wf_x)].sum().item(),
+                        sim_res_ext.Power[:len(wf_x)].sum().item(), atol=400)
 
 
 def test_streamlines():
@@ -137,7 +192,7 @@ def test_streamlines():
         def __init__(self):
             pass
 
-        def __call__(self, wd, x, y, h):
+        def __call__(self, wd, time, x, y, h):
             turning = (x + 1000) / 50
             theta = np.deg2rad(270 - wd + turning)
             return np.array([np.cos(theta), np.sin(theta), theta * 0]).T

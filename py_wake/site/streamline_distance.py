@@ -1,14 +1,16 @@
-from py_wake.site.distance import StraightDistance
-from py_wake import np
-from numpy import newaxis as na
-import matplotlib.pyplot as plt
-from py_wake.examples.data.ParqueFicticio._parque_ficticio import ParqueFicticioSite
-from py_wake.examples.data.hornsrev1 import V80
-from py_wake.deficit_models.noj import NOJ
-from py_wake.flow_map import XYGrid
-from py_wake.utils.streamline import VectorField3D
-from py_wake.utils.model_utils import DeprecatedModel
 import warnings
+
+import matplotlib.pyplot as plt
+from numpy import newaxis as na
+
+from py_wake import np
+from py_wake.deficit_models.noj import NOJ
+from py_wake.examples.data.hornsrev1 import V80
+from py_wake.examples.data.ParqueFicticio._parque_ficticio import ParqueFicticioSite
+from py_wake.flow_map import XYGrid
+from py_wake.site.distance import StraightDistance
+from py_wake.utils.model_utils import DeprecatedModel
+from py_wake.utils.streamline import VectorField3D
 
 
 class StreamlineDistance(StraightDistance):
@@ -28,12 +30,12 @@ class StreamlineDistance(StraightDistance):
         self.vectorField = vectorField
         self.step_size = step_size
 
-    def __call__(self, src_x_ilk, src_y_ilk, src_h_ilk, wd_l=None, WD_ilk=None, dst_xyh_jlk=None):
+    def __call__(self, src_x_ilk, src_y_ilk, src_h_ilk, wd_l=None, WD_ilk=None, time=None, dst_xyh_jlk=None):
         (src_x_ilk, src_y_ilk, src_h_ilk), (dst_x_jlk, dst_y_jlk, dst_h_jlk) = self.get_pos(
             src_x_ilk, src_y_ilk, src_h_ilk, wd_l, WD_ilk, dst_xyh_jlk)
         assert src_x_ilk.shape[2] == 1, 'StreamlineDistance does not support flowcase dependent positions'
 
-        start_points_m = np.array([src_x_ilk, src_y_ilk, src_h_ilk])[:, :, 0, 0].T
+        start_points_m = np.moveaxis([v[:, :, 0].flatten() for v in [src_x_ilk, src_y_ilk, src_h_ilk]], 0, -1)
 
         dw_ijlk, hcw_ijlk, dh_ijlk = StraightDistance.__call__(self, src_x_ilk, src_y_ilk, src_h_ilk, wd_l=wd_l,
                                                                dst_xyh_jlk=dst_xyh_jlk)
@@ -49,9 +51,8 @@ class StreamlineDistance(StraightDistance):
                                        for v in [dw_ijlk, hcw_ijlk, dh_ijlk, dz_ijlk]]
 
         wd_m = np.tile(wd_l, I)
-        start_points_m = np.repeat(start_points_m, L, 0)
 
-        stream_lines = self.vectorField.stream_lines(wd_m, start_points=start_points_m, dw_stop=dw_mj.max(1),
+        stream_lines = self.vectorField.stream_lines(wd_m, time=time, start_points=start_points_m, dw_stop=dw_mj.max(1),
                                                      step_size=self.step_size)
 
         dxyz = np.diff(np.concatenate([stream_lines[:, :1], stream_lines], 1), 1, -2)

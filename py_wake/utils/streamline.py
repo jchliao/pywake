@@ -1,7 +1,8 @@
-from py_wake.utils.grid_interpolator import GridInterpolator
-from py_wake import np
-from numpy import newaxis as na
 import xarray as xr
+from numpy import newaxis as na
+
+from py_wake import np
+from py_wake.utils.grid_interpolator import GridInterpolator
 
 
 class VectorField3D():
@@ -17,7 +18,7 @@ class VectorField3D():
     y = property(lambda self: self.da.y.values)
     z = property(lambda self: self.da.y.values)
 
-    def __call__(self, wd, x, y, h):
+    def __call__(self, wd, time, x, y, h):
         return self.interpolator(np.array([np.atleast_1d(v) for v in [wd, x, y, h]]).T, bounds='limit')
 
     @staticmethod
@@ -30,14 +31,14 @@ class VectorField3D():
         da.assign_coords(v_xyz=[0, 1, 2])
         return VectorField3D(da.transpose('wd', 'x', 'y', 'h', 'v_xyz'))
 
-    def stream_lines(self, wd, start_points, dw_stop, step_size=20):
+    def stream_lines(self, wd, start_points, dw_stop, time=None, step_size=20):
         wd = np.full(len(start_points), wd)
         stream_lines = [start_points]
         m = np.arange(len(wd))
         co, si = np.cos(np.deg2rad(270 - wd)), np.sin(np.deg2rad(270 - wd))
         for _ in range(1000):
             p = stream_lines[-1].copy()
-            v = self(wd[m], p[m, 0], p[m, 1], p[m, 2])
+            v = self(wd[m], time, p[m, 0], p[m, 1], p[m, 2])
             v = v / (np.sqrt(np.sum(v**2, -1)) / step_size)[:, na]  # normalize vector distance to step_size
             p[m] += v
             p[m, 2] = np.maximum(p[m, 2], 0)  # avoid underground flow

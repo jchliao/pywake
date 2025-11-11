@@ -173,7 +173,6 @@ def get_exclude_dict():
     from py_wake.turbulence_models.turbulence_model import XRLUTTurbulenceModel
     from py_wake.turbulence_models.rans_lut_turb import RANSLUTTurbulence
     from py_wake.ground_models.ground_models import NoGround
-    from py_wake.site.jit_streamline_distance import JITStreamlineDistance
     from py_wake.site.streamline_distance import StreamlineDistance
     return {
         "WindFarmModel": ([EngineeringWindFarmModel], [], PropagateDownwind),
@@ -190,7 +189,7 @@ def get_exclude_dict():
         "AddedTurbulenceSuperpositionModel": ([], [], None),
         "GroundModel": ([], [], NoGround),
         "Shear": ([], [], None),
-        "StraightDistance": ([], [JITStreamlineDistance, StreamlineDistance], None),
+        "StraightDistance": ([], [StreamlineDistance], None),
 
     }
 

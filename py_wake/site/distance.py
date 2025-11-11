@@ -46,7 +46,7 @@ class StraightDistance():
                                                for v in dst_xyh_jlk]
         return (src_x_ilk, src_y_ilk, src_h_ilk), (dst_x_jlk, dst_y_jlk, dst_h_jlk)
 
-    def __call__(self, src_x_ilk, src_y_ilk, src_h_ilk, wd_l=None, WD_ilk=None, dst_xyh_jlk=None):
+    def __call__(self, src_x_ilk, src_y_ilk, src_h_ilk, wd_l=None, WD_ilk=None, time=None, dst_xyh_jlk=None):
         (src_x_ilk, src_y_ilk, src_h_ilk), (dst_x_jlk, dst_y_jlk, dst_h_jlk) = self.get_pos(
             src_x_ilk, src_y_ilk, src_h_ilk, wd_l, WD_ilk, dst_xyh_jlk)
         wd_l = np.asarray(wd_l)
@@ -130,7 +130,7 @@ class TerrainFollowingDistance(StraightDistance):
         self.distance_resolution = distance_resolution
 
     def __call__(self, src_x_ilk, src_y_ilk, src_h_ilk,
-                 WD_ilk=None, wd_l=None, dst_xyh_jlk=None):
+                 WD_ilk=None, wd_l=None, time=None, dst_xyh_jlk=None):
         # StraightDistance.setup(self, src_x_ilk, src_y_ilk, src_h_ilk, src_z_ilk, dst_xyh_jlk=dst_xyh_jlk)
         # if len(src_x_ilk) == 0:
         #     return

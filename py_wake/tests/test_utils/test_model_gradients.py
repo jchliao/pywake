@@ -1,35 +1,49 @@
-from numpy import newaxis as na
-import pytest
-import xarray as xr
+import warnings
 
 import matplotlib.pyplot as plt
+import pytest
+import xarray as xr
+from numpy import newaxis as na
+
 from py_wake import np
-from py_wake.deficit_models.deficit_model import WakeDeficitModel, BlockageDeficitModel
-from py_wake.deficit_models.gaussian import BastankhahGaussianDeficit, NiayifarGaussianDeficit
+from py_wake.deficit_models.deficit_model import BlockageDeficitModel, WakeDeficitModel
+from py_wake.deficit_models.gaussian import (
+    BastankhahGaussianDeficit,
+    NiayifarGaussianDeficit,
+)
 from py_wake.deficit_models.no_wake import NoWakeDeficit
+from py_wake.deficit_models.noj import NOJDeficit
 from py_wake.deflection_models.deflection_model import DeflectionModel
-from py_wake.examples.data.ParqueFicticio._parque_ficticio import ParqueFicticioSite
 from py_wake.examples.data.hornsrev1 import V80, Hornsrev1Site
 from py_wake.examples.data.iea34_130rwt._iea34_130rwt import IEA34_130_1WT_Surrogate
-from py_wake.examples.data.iea37._iea37 import IEA37_WindTurbines, IEA37Site, IEA37WindTurbines
+from py_wake.examples.data.iea37._iea37 import (
+    IEA37_WindTurbines,
+    IEA37Site,
+    IEA37WindTurbines,
+)
+from py_wake.examples.data.ParqueFicticio._parque_ficticio import ParqueFicticioSite
 from py_wake.ground_models.ground_models import GroundModel
+from py_wake.rotor_avg_models.area_overlap_model import AreaOverlapAvgModel
 from py_wake.rotor_avg_models.rotor_avg_model import RotorAvgModel
 from py_wake.site.distance import StraightDistance
-from py_wake.site.shear import LogShear, PowerShear, Shear, MOSTShear
-from py_wake.superposition_models import SuperpositionModel, AddedTurbulenceSuperpositionModel
+from py_wake.site.shear import LogShear, MOSTShear, PowerShear, Shear
+from py_wake.site.streamline_distance import StreamlineDistance
+from py_wake.site.xrsite import XRSite
+from py_wake.superposition_models import (
+    AddedTurbulenceSuperpositionModel,
+    SuperpositionModel,
+)
 from py_wake.tests import npt
-from py_wake.turbulence_models.stf import STF2017TurbulenceModel, STF2005TurbulenceModel
+from py_wake.turbulence_models.stf import STF2005TurbulenceModel, STF2017TurbulenceModel
 from py_wake.turbulence_models.turbulence_model import TurbulenceModel
 from py_wake.utils import gradients
-from py_wake.utils.gradients import autograd, plot_gradients, fd, cs
+from py_wake.utils.gradients import autograd, cs, fd, plot_gradients
 from py_wake.utils.model_utils import get_models
-from py_wake.wind_farm_models.engineering_models import PropagateDownwind, All2AllIterative, EngineeringWindFarmModel
-from py_wake.deficit_models.noj import NOJDeficit
-from py_wake.site.jit_streamline_distance import JITStreamlineDistance
-from py_wake.site.xrsite import XRSite
-from py_wake.rotor_avg_models.area_overlap_model import AreaOverlapAvgModel
-import warnings
-from py_wake.site.streamline_distance import StreamlineDistance
+from py_wake.wind_farm_models.engineering_models import (
+    All2AllIterative,
+    EngineeringWindFarmModel,
+    PropagateDownwind,
+)
 
 
 def check_gradients(wfm, name, wt_x=[-1300, -650, 0], wt_y=[0, 0, 0], wt_h=[110, 110, 110], fd_step=1e-6, fd_decimal=6,
@@ -237,7 +251,7 @@ def test_shear(model):
 
 @pytest.mark.parametrize('model', get_models(StraightDistance))
 def test_distance_models(model):
-    if model not in [None, JITStreamlineDistance, StreamlineDistance]:
+    if model not in [None, StreamlineDistance]:
         site = ParqueFicticioSite(distance=model())
         x, y = site.initial_position[3]
         check_gradients(lambda site, wt, s=site: PropagateDownwind(

@@ -86,3 +86,8 @@ py_wake = ['examples/data/iea37/*.yaml',
 
 [tool.setuptools_scm]
 version_file = "py_wake/version.py"
+
+
+[tool.ruff.lint]
+select = ['E', 'W']
+preview = true

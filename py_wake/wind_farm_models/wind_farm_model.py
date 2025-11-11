@@ -1,19 +1,21 @@
-from abc import abstractmethod, ABC
-from py_wake.site._site import Site, LocalWind
-from py_wake.wind_turbines import WindTurbines
-from py_wake import np
-from py_wake.flow_map import FlowMap, HorizontalGrid, FlowBox, Grid
-import xarray as xr
-from py_wake.utils import xarray_utils, weibull  # register ilk function @UnusedImport
-from numpy import newaxis as na
-from numpy import atleast_1d
-from py_wake.utils.model_utils import check_model, fix_shape
 import multiprocessing
-from py_wake.utils.parallelization import get_pool_map, get_pool_starmap
+from abc import ABC, abstractmethod
+from collections.abc import Iterable
+
+import xarray as xr
+from numpy import atleast_1d
+from numpy import newaxis as na
+
+from py_wake import np
+from py_wake.flow_map import FlowBox, FlowMap, Grid, HorizontalGrid
+from py_wake.noise_models.iso import ISONoiseModel
+from py_wake.site._site import LocalWind, Site
+from py_wake.utils import weibull, xarray_utils  # register ilk function @UnusedImport
 from py_wake.utils.functions import arg2ilk
 from py_wake.utils.gradients import autograd
-from py_wake.noise_models.iso import ISONoiseModel
-from collections.abc import Iterable
+from py_wake.utils.model_utils import check_model, fix_shape
+from py_wake.utils.parallelization import get_pool_map, get_pool_starmap
+from py_wake.wind_turbines import WindTurbines
 
 
 class WindFarmModel(ABC):
@@ -139,10 +141,9 @@ class WindFarmModel(ABC):
         If return_simulationResult is False the functino returns a tuple of:
         WS_eff_ilk, TI_eff_ilk, power_ilk, ct_ilk, localWind, kwargs_ilk
         """
-        if isinstance(time, Iterable) and (
-            len(ws if ws is not None else []) != len(time) or
-            len(wd if wd is not None else []) != len(time)
-        ):  # avoid redundant passing wd & ws for time series sites
+        if isinstance(time, Iterable) and (len(ws if ws is not None else []) != len(time) or
+                                           len(wd if wd is not None else []) != len(time)
+                                           ):  # avoid redundant passing wd & ws for time series sites
             wd = np.zeros(len(time))
             ws = np.zeros(len(time))
 
@@ -312,8 +313,6 @@ class WindFarmModel(ABC):
                          for ws_i0, ws_i1 in zip(ws_i[:-1], ws_i[1:])]
         else:
             # (wd, ws) vector
-            if time is True:
-                time = np.arange(len(wd))
             slice_lst = [(slice(wd_i0, wd_i1), slice(wd_i0, wd_i1))
                          for wd_i0, wd_i1 in zip(wd_i[:-1], wd_i[1:])]
 
@@ -840,10 +839,12 @@ class SimulationResult(xr.Dataset):
 
 def main():
     if __name__ == '__main__':
-        from py_wake.examples.data.iea37 import IEA37Site, IEA37_WindTurbines
-        from py_wake import IEA37SimpleBastankhahGaussian
         import warnings
+
         import matplotlib.pyplot as plt
+
+        from py_wake import IEA37SimpleBastankhahGaussian
+        from py_wake.examples.data.iea37 import IEA37_WindTurbines, IEA37Site
 
         site = IEA37Site(16)
         x, y = site.initial_position.T

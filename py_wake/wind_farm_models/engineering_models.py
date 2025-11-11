@@ -236,6 +236,8 @@ class EngineeringWindFarmModel(WindFarmModel):
         if hasattr(lw, 'TI_ilk'):
             kwargs['TI_ilk'] = lw.TI_ilk
             kwargs['TI_eff_ilk'] = lw.TI_ilk + 0.  # autograd-friendly copy
+        if 'time' in lw:
+            kwargs['time'] = lw.time
 
         self._check_input(kwargs)
 
@@ -277,8 +279,10 @@ class EngineeringWindFarmModel(WindFarmModel):
         wt_d_i = self.windTurbines.diameter(type_i)
         if 'time' in sim_res_data:
             time = np.atleast_1d(sim_res_data['time'].values)
+            map_arg_funcs = {'time': lambda l, j: time[l]}
         else:
             time = False
+            map_arg_funcs = {}
         if 'wd' in sim_res_data.dims:
             sim_res_data = sim_res_data.sel(wd=wd)
         wt_x_ilk = sim_res_data['x'].ilk()
@@ -296,13 +300,14 @@ class EngineeringWindFarmModel(WindFarmModel):
                 l_ = [l, slice(0, 1)][v.shape[1] == 1]
                 return v[:, l_]
             return wrap
-        map_arg_funcs = {k.replace('CT', 'ct') + '_ilk': get_ilk(k)
-                         for k in sim_res_data if k not in ['wd_bin_size', 'ws_l', 'ws_u']}
+        map_arg_funcs.update({k.replace('CT', 'ct') + '_ilk': get_ilk(k)
+                              for k in sim_res_data if k not in ['wd_bin_size', 'ws_l', 'ws_u']})
         map_arg_funcs.update({
             'type_il': lambda l, j: type_i[:, na],
             'D_src_il': lambda l, j: wt_d_i[:, na],
             'D_dst_ijl': lambda l, j: np.zeros((1, 1, 1)) + D_dst,
             'IJLK': lambda l=slice(None), j=slice(None), I=I, J=J, L=L, K=K: (I, len(np.arange(J)[j]), len(np.arange(L)[l]), K)})
+
         for k in ['WS', 'WD', 'TI']:
             if k in sim_res_data:
                 if k + '_ilk' in lw.overwritten:
@@ -315,7 +320,7 @@ class EngineeringWindFarmModel(WindFarmModel):
 
     def _get_flow_l(self, model_kwargs, wt_x_ilk, wt_y_ilk, wt_h_ilk, x_j, y_j, h_j, wd, WD_ilk, WS_jlk, TI_jlk):
         dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(wt_x_ilk, wt_y_ilk, wt_h_ilk, wd_l=wd, WD_ilk=WD_ilk,
-                                                        dst_xyh_jlk=(x_j, y_j, h_j))
+                                                        time=model_kwargs.get('time', None), dst_xyh_jlk=(x_j, y_j, h_j))
 
         if self.wec != 1:
             hcw_ijlk = hcw_ijlk / self.wec
