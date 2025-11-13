@@ -682,7 +682,8 @@ class SimulationResult(xr.Dataset):
         X, Y, H = np.meshgrid(x, y, h)
         x_j, y_j, h_j = X.flatten(), Y.flatten(), H.flatten()
         wd, ws, sim_res = self._get_flow_map_args(wd, ws, time)
-        lw_j, WS_eff_jlk, TI_eff_jlk = self.windFarmModel._flow_map(x_j, y_j, h_j, self.localWind, wd, ws, sim_res)
+        lw_j, WS_eff_jlk, TI_eff_jlk = self.windFarmModel._flow_map(x_j[:, na], y_j[:, na], h_j[:, na],
+                                                                    self.localWind, wd, ws, sim_res)
         return FlowBox(self, X, Y, H, lw_j, WS_eff_jlk, TI_eff_jlk)
 
     def _get_grid(self, grid):
@@ -726,7 +727,7 @@ class SimulationResult(xr.Dataset):
         sim_res = self.sel(wd=wd, ws=ws)
         for k in self.__slots__:
             setattr(sim_res, k, getattr(self, k))
-        aep_j = self.windFarmModel._aep_map(x_j, y_j, h_j, type, sim_res, n_cpu, memory_GB)
+        aep_j = self.windFarmModel._aep_map(x_j[:, na], y_j[:, na], h_j[:, na], type, sim_res, n_cpu, memory_GB)
         if normalize_probabilities:
             lw_j = self.windFarmModel.site.local_wind(x=x_j, y=y_j, h=h_j, wd=wd, ws=ws)
             aep_j /= lw_j.P_ilk.sum((1, 2))
@@ -777,7 +778,8 @@ class SimulationResult(xr.Dataset):
         X, Y, x_j, y_j, h_j, plane = self._get_grid(grid)
         wd, ws, sim_res = self._get_flow_map_args(wd, ws, time)
         lw_j, WS_eff_jlk, TI_eff_jlk = self.windFarmModel._flow_map(
-            x_j, y_j, h_j, self.localWind, wd, ws, sim_res, D_dst=D_dst, memory_GB=memory_GB, n_cpu=n_cpu)
+            x_j[:, na], y_j[:, na], h_j[:, na], self.localWind, wd, ws, sim_res, D_dst=D_dst,
+            memory_GB=memory_GB, n_cpu=n_cpu)
         return FlowMap(sim_res, X, Y, lw_j, WS_eff_jlk, TI_eff_jlk, plane=plane)
 
     def _get_flow_map_args(self, wd, ws, time):

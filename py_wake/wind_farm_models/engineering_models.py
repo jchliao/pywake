@@ -318,9 +318,9 @@ class EngineeringWindFarmModel(WindFarmModel):
                             f"The WT dependent {k} that was provided for the simulation is not available at the flow map points and therefore ignored")
         return map_arg_funcs, lw_j, WD_il
 
-    def _get_flow_l(self, model_kwargs, wt_x_ilk, wt_y_ilk, wt_h_ilk, x_j, y_j, h_j, wd, WD_ilk, WS_jlk, TI_jlk):
+    def _get_flow_l(self, model_kwargs, wt_x_ilk, wt_y_ilk, wt_h_ilk, x_jl, y_jl, h_jl, wd, WD_ilk, WS_jlk, TI_jlk):
         dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(wt_x_ilk, wt_y_ilk, wt_h_ilk, wd_l=wd, WD_ilk=WD_ilk,
-                                                        time=model_kwargs.get('time', None), dst_xyh_jlk=(x_j, y_j, h_j))
+                                                        time=model_kwargs.get('time', None), dst_xyh_jlk=(x_jl, y_jl, h_jl))
 
         if self.wec != 1:
             hcw_ijlk = hcw_ijlk / self.wec
@@ -359,9 +359,8 @@ class EngineeringWindFarmModel(WindFarmModel):
         # ===============================================================================================================
         for i, ewf in enumerate(self.externalWindFarms, len(wt_x_ilk) - len(self.externalWindFarms)):
             deficit_ijlk[i] = ewf(i=i, l=np.ones(len(wd), dtype=bool), deficit_jlk=None,
-                                  # **{**model_kwargs, 'dw_ijlk': sdw_ijlk, 'hcw_ijlk': shcw_ijlk, 'dh_ijlk': sdh_ijlk}
                                   **model_kwargs,
-                                  dst_xyh_jlk=[x_j[:, na, na], y_j[:, na, na], h_j[:, na, na]]
+                                  dst_xyh_jlk=[x_jl[:, :, na], y_jl[:, :, na], h_jl[:, :, na]]
                                   )
         # ===============================================================================================================
         # Calculate added Turbulence
@@ -398,8 +397,8 @@ class EngineeringWindFarmModel(WindFarmModel):
         model_kwargs.clear()
         return WS_eff_jlk, TI_eff_jlk
 
-    def _aep_map(self, x_j, y_j, h_j, type_j, sim_res_data, memory_GB=1, n_cpu=1):
-        lw_j, WS_eff_jlk, _ = self._flow_map(x_j, y_j, h_j, sim_res_data.localWind, sim_res_data.wd.values,
+    def _aep_map(self, x_jl, y_jl, h_jl, type_j, sim_res_data, memory_GB=1, n_cpu=1):
+        lw_j, WS_eff_jlk, _ = self._flow_map(x_jl, y_jl, h_jl, sim_res_data.localWind, sim_res_data.wd.values,
                                              sim_res_data.ws.values, sim_res_data, memory_GB=memory_GB, n_cpu=n_cpu)
         power_kwargs = {}
         if 'type' in (self.windTurbines.powerCtFunction.required_inputs +
@@ -410,15 +409,15 @@ class EngineeringWindFarmModel(WindFarmModel):
         aep_j = (power_jlk * lw_j.P_ilk).sum((1, 2))
         return aep_j * 365 * 24 * 1e-9
 
-    def _flow_map(self, x_j, y_j, h_j, lw, wd, ws, sim_res_data, D_dst=0, memory_GB=1, n_cpu=1):
+    def _flow_map(self, x_jl, y_jl, h_jl, lw, wd, ws, sim_res_data, D_dst=0, memory_GB=1, n_cpu=1):
         """call this function via SimulationResult.flow_map"""
         wd, ws = np.atleast_1d(wd), np.atleast_1d(ws)
-        arg_funcs, lw_j, WD_il = self.get_map_args(x_j, y_j, h_j, lw, wd, ws, sim_res_data, D_dst=D_dst)
+        arg_funcs, lw_j, WD_il = self.get_map_args(x_jl, y_jl, h_jl, lw, wd, ws, sim_res_data, D_dst=D_dst)
         I, J, L, K = arg_funcs['IJLK']()
 
         if I == 0:
-            return (lw_j, np.broadcast_to(lw_j.WS_ilk, (len(x_j), L, K)).astype(float),
-                    np.broadcast_to(lw_j.TI_ilk, (len(x_j), L, K)).astype(float))
+            return (lw_j, np.broadcast_to(lw_j.WS_ilk, (len(x_jl), L, K)).astype(float),
+                    np.broadcast_to(lw_j.TI_ilk, (len(x_jl), L, K)).astype(float))
         n_cpu = n_cpu or multiprocessing.cpu_count()
         # *6=dx_ijlk, dy_ijlk, dz_ijlk, dh_ijlk, deficit, blockage
         size_GB = I * J * L * K * np.array([]).itemsize * 6 * n_cpu / 1024**3
@@ -431,11 +430,18 @@ class EngineeringWindFarmModel(WindFarmModel):
                                     unit='wd', leave=0)
         wt_x_ilk, wt_y_ilk, wt_h_ilk = [sim_res_data[k].ilk() for k in ['x', 'y', 'h']]
 
-        l_iter = [({k: arg_funcs[k](l, j) for k in arg_funcs},
-                   *[(v, v[:, slice(l[0], l[-1] + 1)])[np.shape(v)[1] == L] for v in [wt_x_ilk, wt_y_ilk, wt_h_ilk]],
-                   x_j[j], y_j[j], h_j[j], wd[l], WD_il[:, l],
-                   lw_j.WS_ilk[:, (l, [0])[lw_j.WS_ilk.shape[1] == 1]],
-                   lw_j.TI_ilk[:, (l, [0])[lw_j.TI_ilk.shape[1] == 1]])
+        def get_jl_args(j, l):
+            js, ls = slice(j[0], j[-1] + 1), slice(l[0], l[-1] + 1)
+            if x_jl.shape[1] == 1:
+                ls = slice(None)
+
+            return ({k: arg_funcs[k](l, j) for k in arg_funcs},
+                    *[(v, v[:, slice(l[0], l[-1] + 1)])[np.shape(v)[1] == L] for v in [wt_x_ilk, wt_y_ilk, wt_h_ilk]],
+                    x_jl[js, ls], y_jl[js, ls], np.broadcast_to(h_jl, x_jl.shape)[js, ls], wd[l], WD_il[:, l],
+                    lw_j.WS_ilk[:, (l, [0])[lw_j.WS_ilk.shape[1] == 1]],
+                    lw_j.TI_ilk[:, (l, [0])[lw_j.TI_ilk.shape[1] == 1]])
+
+        l_iter = [get_jl_args(j, l)
                   for l in np.array_split(np.arange(L).astype(int), wd_chunks)
                   for j in np.array_split(np.arange(J).astype(int), j_chunks)]
         WS_eff_jlk, TI_eff_jlk = zip(*map_func(self._get_flow_l, l_iter))

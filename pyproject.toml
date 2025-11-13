@@ -90,4 +90,11 @@ version_file = "py_wake/version.py"
 
 [tool.ruff.lint]
 select = ['E', 'W']
+extend-ignore = ["E741"]
 preview = true
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 150
+
+
+

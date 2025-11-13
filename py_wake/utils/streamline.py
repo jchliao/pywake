@@ -32,13 +32,22 @@ class VectorField3D():
         return VectorField3D(da.transpose('wd', 'x', 'y', 'h', 'v_xyz'))
 
     def stream_lines(self, wd, start_points, dw_stop, time=None, step_size=20):
-        wd = np.full(len(start_points), wd)
+        # print(np.shape(wd), np.shape(start_points), time)
+        if time is None:
+            wd = np.full(len(start_points), wd)
+            time = wd * 0
+        # else:
+        #     if len(start_points) == 1:
+        #         # 1 start point, multiple wd/time
+        #         start_points = np.broadcast_to(start_points, (len(wd), 3))
+        #     elif len(time) == 1:
+        #         time = wd * 0 + time
         stream_lines = [start_points]
         m = np.arange(len(wd))
         co, si = np.cos(np.deg2rad(270 - wd)), np.sin(np.deg2rad(270 - wd))
         for _ in range(1000):
             p = stream_lines[-1].copy()
-            v = self(wd[m], time, p[m, 0], p[m, 1], p[m, 2])
+            v = self(wd[m], time[m], p[m, 0], p[m, 1], p[m, 2])
             v = v / (np.sqrt(np.sum(v**2, -1)) / step_size)[:, na]  # normalize vector distance to step_size
             p[m] += v
             p[m, 2] = np.maximum(p[m, 2], 0)  # avoid underground flow

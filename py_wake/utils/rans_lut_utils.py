@@ -214,12 +214,30 @@ def get_Ellipsys_equivalent_output(sim_res, aDControl, flowmap_maxpoints=None,
         for k in sim_res.__slots__:
             setattr(sim_res_wd, k, getattr(sim_res, k))
         wd, ws = sim_res_wd.wd.values, sim_res_wd.ws.values
-        WS_eff_jlk = np.concatenate([sim_res.windFarmModel._flow_map(*pos_j.T, sim_res.localWind, wd, ws, sim_res_wd)[1]
+        WS_eff_jlk = np.concatenate([sim_res.windFarmModel._flow_map(*[p[:, na] for p in pos_j.T], sim_res.localWind, wd, ws, sim_res_wd)[1]
                                      for pos_j in np.array_split(cxyzg_xj.T, nflowmaps)])
 
         # Integrate U over AD
         return np.sum(np.reshape(WS_eff_jlk, (I, ntheta * (nr - 1), K)) * weights, axis=1)
     WS_eff_star_ilk = np.concatenate([get_WS_eff_ik(l)[:, na] for l in range(L)], 1)
+
+    # Vectorized version of get_WS_eff_ik.
+    # Against expectations, this version is slower with numpy 2.3.4 and scipy 1.16.3.
+    # The slowdown seems to
+    # def get_WS_eff_ilk():
+    #     # project rotorAvgModel node positions to plane perpendicular to current wind direction
+    #     o3 = o3_l[:, :]
+    #     o1 = np.cross(o2, o3.T).T
+    #     cxyzg_xijl = nx_in[na, :, :, na] * o3[:, na, na, :, ] + ny_in[na, :, :, na] * \
+    #         o1[:, na, na, :] + nz_in[na, :, :, na] * o2[:, na, na, na] + pos[:, :, na, na]
+    #     cxyzg_xjl = cxyzg_xijl.reshape((3, -1, L))
+    #     wd, ws = sim_res.wd.values, sim_res.ws.values
+    #     WS_eff_jlk = sim_res.windFarmModel._flow_map(*cxyzg_xjl, sim_res.localWind, wd, ws, sim_res)[1]
+    #
+    #     # Integrate U over AD
+    #     return np.sum(np.reshape(WS_eff_jlk, (I, ntheta * (nr - 1), L, K)) * weights[:, :, na], axis=1)
+    #
+    # WS_eff_star_ilk = get_WS_eff_ilk()
 
     U_tab_lst = [U_CT_CP_AD[0, :] for U_CT_CP_AD in aDControl.U_CT_CP_AD]
 

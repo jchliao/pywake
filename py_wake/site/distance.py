@@ -80,7 +80,7 @@ class StraightDistance():
 
         dh_ijlk = dst_h_jlk[na, :] - src_h_ilk[:, na]
 
-        return dw_ijlk, hcw_ijlk, dh_ijlk
+        return dw_ijlk, hcw_ijlk, np.broadcast_to(dh_ijlk, hcw_ijlk.shape)
 
     def dw_order_indices(self, src_x_ilk, src_y_ilk, wd_l):
         WD_ilk = np.asarray(wd_l)[na, :, na]

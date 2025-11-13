@@ -496,3 +496,57 @@ def test_IJLK():
 
     sim_res = wfm([0, 1000], [0, 0], ws=[5, 10, 15], wd=[270, 270, 270], time=True, WS_eff=0)
     sim_res.flow_map(HorizontalGrid(x=np.linspace(0, 1000, 10), y=np.linspace(0, 1000, 10)), time=[0, 1, 2])
+
+
+def test_wd_dependent_dst():
+    wfm = IEA37CaseStudy1(16)
+    x, y = wfm.site.initial_position.T
+    sim_res = wfm(x, y, wd=np.arange(360), ws=np.arange(3, 25))
+
+    X, Y = np.meshgrid(np.linspace(-1500, 3500, 10), np.linspace(-1500, 1500, 10))
+    dw, hcw = X.flatten(), Y.flatten()
+    dh = dw * 0
+    wf_h = wfm.windTurbines.hub_height()
+    wf_x = 0
+    wf_y = 0
+    from tqdm import tqdm
+    from numpy import newaxis as na
+
+    def run_loop():
+        wd_lst = sim_res.wd.values
+        theta = np.deg2rad(270 - wd_lst)
+        co, si = np.cos(theta), np.sin(theta)
+        x_jl = co[na] * dw[:, na] - hcw[:, na] * si[na] + wf_x
+        y_jl = si[na] * dw[:, na] + hcw[:, na] * co[na] + wf_y
+        h_j = dh + wf_h
+        for wd, x_j, y_j in zip(wd_lst, x_jl.T, y_jl.T):
+            lw_j, WS_eff_jlk, TI_eff_jlk = wfm._flow_map(x_j[:, na], y_j[:, na], h_j[:, na], sim_res.localWind,
+                                                         wd, sim_res.ws, sim_res)
+            if 0:
+                plt.contourf(x_j.reshape(X.shape), y_j.reshape(X.shape),
+                             WS_eff_jlk[:, :, 7].reshape(X.shape), levels=50)
+                wfm.windTurbines.plot(x, y)
+                plt.axis('scaled')
+                plt.show()
+
+    timeit(run_loop, verbose=1, line_profile=0)()
+
+    def run_vec():
+        wd_lst = sim_res.wd.values
+        theta = np.deg2rad(270 - wd_lst)
+        co, si = np.cos(theta), np.sin(theta)
+        x_jl = co[na] * dw[:, na] - hcw[:, na] * si[na] + wf_x
+        y_jl = si[na] * dw[:, na] + hcw[:, na] * co[na] + wf_y
+        h_jl = dh[:, na] + wf_h
+
+        lw_j, WS_eff_jlk, TI_eff_jlk = wfm._flow_map(x_jl, y_jl, h_jl, sim_res.localWind,
+                                                     wd_lst, sim_res.ws, sim_res)
+        if 0:
+            for l, wd_lst in enumerate(wd_lst):
+                plt.contourf(x_jl[:, l].reshape(X.shape), y_jl[:, l].reshape(X.shape),
+                             WS_eff_jlk[:, l, 7].reshape(X.shape), levels=50)
+                wfm.windTurbines.plot(x, y)
+                plt.axis('scaled')
+                plt.show()
+
+    timeit(run_vec, verbose=1, line_profile=0)()

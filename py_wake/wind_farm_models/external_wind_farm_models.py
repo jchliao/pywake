@@ -82,7 +82,7 @@ class ExternalWFMWindFarm(ExternalWindFarm):
             M = len(m_lst)
             ws_lst = np.sort(np.unique(np.r_[WS_eff_ilk.min(), np.round(WS_eff_ilk.flatten()), WS_eff_ilk.max()]))
             wd_lst = WD_l[m_lst]
-            sim_res = self.wfm(**{**self.wfm_kwargs, 'ws': ws_lst, 'wd': wd_lst})
+            sim_res = self.wfm(**{**self.wfm_kwargs, 'ws': ws_lst, 'wd': np.sort(np.unique(wd_lst))})
             from py_wake.site.streamline_distance import StreamlineDistance
             if isinstance(self.wfm.site.distance, StreamlineDistance):
                 # Simulation and flow map of external WF is computed with stream line distances
@@ -99,7 +99,7 @@ class ExternalWFMWindFarm(ExternalWindFarm):
             if dst_xyh_jlk[0].shape[1:] == (1, 1) and M > J:
                 # same destination for all wd
                 x_j, y_j, h_j = [v[:, 0, 0] for v in dst_xyh_jlk]
-                lw_j, WS_eff_jlk, TI_eff_jlk = self.wfm._flow_map(x_j, y_j, h_j, sim_res.localWind,
+                lw_j, WS_eff_jlk, TI_eff_jlk = self.wfm._flow_map(x_j[:, na], y_j[:, na], h_j[:, na], sim_res.localWind,
                                                                   wd_lst, ws_lst, sim_res)
                 _deficit_jlk = lw_j.WS_ilk - WS_eff_jlk
 
@@ -142,7 +142,7 @@ class ExternalXRAbsWindFarm(ExternalWindFarm):
         X, Y, H = np.meshgrid(*grid_xyh, indexing='ij')
         x_j, y_j, h_j = X.flatten(), Y.flatten(), H.flatten()
 
-        lw_j, WS_eff_jlk, TI_eff_jlk = windFarmModel._flow_map(x_j, y_j, h_j, sim_res.localWind,
+        lw_j, WS_eff_jlk, TI_eff_jlk = windFarmModel._flow_map(x_j[:, na], y_j[:, na], h_j[:, na], sim_res.localWind,
                                                                sim_res.wd, sim_res.ws, sim_res)
         deficit = lw_j.WS_ilk - WS_eff_jlk.reshape(X.shape + (WS_eff_jlk.shape[1:]))
         ds = xr.Dataset({'deficit': (['x', 'y', 'h', 'wd', 'ws'], deficit)},
@@ -209,7 +209,7 @@ class ExternalXRRelWindFarm(ExternalXRAbsWindFarm):
             x_j = co * dw - hcw * si + wf_x
             y_j = si * dw + hcw * co + wf_y
             h_j = dh + wf_h
-            lw_j, WS_eff_jlk, TI_eff_jlk = windFarmModel._flow_map(x_j, y_j, h_j, sim_res.localWind,
+            lw_j, WS_eff_jlk, TI_eff_jlk = windFarmModel._flow_map(x_j[:, na], y_j[:, na], h_j[:, na], sim_res.localWind,
                                                                    wd, sim_res.ws, sim_res)
             deficit.append(lw_j.WS_ilk - WS_eff_jlk)
         deficit = np.moveaxis(deficit, 0, 1).reshape(X.shape + (len(sim_res.wd), len(sim_res.ws)))

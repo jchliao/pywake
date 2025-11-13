@@ -139,7 +139,7 @@ class FlowMap(FlowBox):
         return self.aep_xylk(normalize_probabilities, with_wake_loss, **wt_kwargs).sum(['wd', 'ws'])
 
     def plot(self, data, clabel, levels=100, cmap=None, plot_colorbar=True, plot_windturbines=True,
-             normalize_with=1, ax=None):
+             normalize_with=1, ax=None, cax=None):
         """Plot data as contouf map
 
         Parameters
@@ -191,7 +191,7 @@ class FlowMap(FlowBox):
             # c = data.isel(h=0).plot(levels=levels, cmap=cmap, ax=ax, add_colorbar=plot_colorbar)
             c = ax.contourf(self.X / n, self.Y / n, data.squeeze().values, levels=levels, cmap=cmap)
             if plot_colorbar:
-                plt.colorbar(c, label=clabel, ax=ax)
+                plt.colorbar(c, label=clabel, ax=ax, cax=cax)
         else:
             raise NotImplementedError(
                 f"Plot not supported for FlowMaps based on Points. Use XYGrid, YZGrid or XZGrid instead")
@@ -252,7 +252,7 @@ class FlowMap(FlowBox):
                                     wd=self.wd.values, yaw=yaw, tilt=tilt, normalize_with=normalize_with, ax=ax)
 
     def plot_wake_map(self, levels=100, cmap=None, plot_colorbar=True, plot_windturbines=True,
-                      normalize_with=1, ax=None):
+                      normalize_with=1, ax=None, cax=None):
         """Plot effective wind speed contourf map
 
         Parameters
@@ -275,7 +275,7 @@ class FlowMap(FlowBox):
 
         return self.plot(WS_eff, clabel='wind speed [m/s]',
                          levels=levels, cmap=cmap, plot_colorbar=plot_colorbar,
-                         plot_windturbines=plot_windturbines, normalize_with=normalize_with, ax=ax)
+                         plot_windturbines=plot_windturbines, normalize_with=normalize_with, ax=ax, cax=cax)
 
     def plot_ti_map(self, levels=100, cmap=None, plot_colorbar=True, plot_windturbines=True, ax=None):
         """Plot effective turbulence intensity contourf map

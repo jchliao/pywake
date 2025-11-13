@@ -85,10 +85,10 @@ def test_flat_distances(distance):
                                                      [[-50, 6.69872981, 100]],
                                                      [[-100, -36.6025404, 100]],
                                                      [[-100, -86.6025404, 0]]])
-    npt.assert_array_almost_equal(dh_ijlk[..., 0], [[[0]],
-                                                    [[-10]],
-                                                    [[-20]],
-                                                    [[-30]]])
+    npt.assert_array_almost_equal(dh_ijlk[..., :1, 0], [[[0]],
+                                                        [[-10]],
+                                                        [[-20]],
+                                                        [[-30]]])
     npt.assert_array_equal(dw_indices_lkd[:, 0, :], [[0, 1, 2, 4, 3],
                                                      [2, 1, 0, 3, 4],
                                                      [3, 2, 1, 4, 0]])
