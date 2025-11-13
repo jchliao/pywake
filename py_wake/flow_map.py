@@ -189,9 +189,10 @@ class FlowMap(FlowBox):
 
             # xarray gives strange levels
             # c = data.isel(h=0).plot(levels=levels, cmap=cmap, ax=ax, add_colorbar=plot_colorbar)
-            c = ax.contourf(self.X / n, self.Y / n, data.squeeze().values, levels=levels, cmap=cmap)
+            c = ax.contourf(self.X / n, self.Y / n, data.squeeze().values, levels=levels, cmap=cmap,
+                            extend='both')
             if plot_colorbar:
-                plt.colorbar(c, label=clabel, ax=ax, cax=cax)
+                plt.colorbar(c, label=clabel, ax=ax, cax=cax, extend='both')
         else:
             raise NotImplementedError(
                 f"Plot not supported for FlowMaps based on Points. Use XYGrid, YZGrid or XZGrid instead")
