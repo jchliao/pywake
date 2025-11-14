@@ -202,17 +202,16 @@ class ExternalXRRelWindFarm(ExternalXRAbsWindFarm):
         wf_x = np.mean([np.min(wt_x), np.max(wt_x)])
         wf_y = np.mean([np.min(wt_y), np.max(wt_y)])
         wf_h = windFarmModel.windTurbines.hub_height(type)
-        deficit = []
-        for wd in tqdm(sim_res.wd.values, disable=1):
-            theta = np.deg2rad(270 - wd)
-            co, si = np.cos(theta), np.sin(theta)
-            x_j = co * dw - hcw * si + wf_x
-            y_j = si * dw + hcw * co + wf_y
-            h_j = dh + wf_h
-            lw_j, WS_eff_jlk, TI_eff_jlk = windFarmModel._flow_map(x_j[:, na], y_j[:, na], h_j[:, na], sim_res.localWind,
-                                                                   wd, sim_res.ws, sim_res)
-            deficit.append(lw_j.WS_ilk - WS_eff_jlk)
-        deficit = np.moveaxis(deficit, 0, 1).reshape(X.shape + (len(sim_res.wd), len(sim_res.ws)))
+
+        theta = np.deg2rad(270 - sim_res.wd.values)
+        co, si = np.cos(theta), np.sin(theta)
+        x_jl = co[na] * dw[:, na] - hcw[:, na] * si[na] + wf_x
+        y_jl = si[na] * dw[:, na] + hcw[:, na] * co[na] + wf_y
+        h_jl = dh[:, na] + wf_h
+        lw_j, WS_eff_jlk, TI_eff_jlk = windFarmModel._flow_map(x_jl, y_jl, h_jl, sim_res.localWind,
+                                                               sim_res.wd.values, sim_res.ws, sim_res)
+        deficit = (lw_j.WS_ilk - WS_eff_jlk).reshape(X.shape + (len(sim_res.wd), len(sim_res.ws)))
+
         ds = xr.Dataset({'deficit': (['x', 'y', 'h', 'wd', 'ws'], deficit)},
                         coords=dict(x=grid_xyh[0], y=grid_xyh[1], h=grid_xyh[2], wd=sim_res.wd, ws=sim_res.ws))
 
