@@ -321,7 +321,8 @@ def test_Streamlinesparquefictio():
     wfm = NOJ(site, wt)
     wd = np.array([330])
     sim_res = wfm(x, y, wd=wd, ws=10)
-    dw = site.distance(x, y, x * 0 + wt.hub_height(), wd_l=wd, WD_ilk=np.repeat(wd[na, na], len(x), 0))[0][:, :, 0, 0]
+    dw = site.distance(x, y, x * 0 + wt.hub_height(),
+                       wd_l=wd, WD_ilk=np.repeat(wd[na, na], len(x), 0), time=False)[0][:, :, 0, 0]
     # streamline downwind distance (positive numbers, upper triangle) cannot be shorter than
     # straight line distances in opposite direction (negative numbers, lower triangle)
     assert (dw + dw.T).min() >= 0
@@ -330,9 +331,10 @@ def test_Streamlinesparquefictio():
 
     fm = sim_res.flow_map(XYGrid(x=np.linspace(site.ds.x[0].item(), site.ds.x[-1].item(), 500),
                                  y=np.linspace(site.ds.y[0].item(), site.ds.y[-1].item(), 500)))
+    x, y = x[6:], y[6:]
     stream_lines = vf3d.stream_lines(wd=np.full(x.shape, wd), start_points=np.array([x, y, np.full(x.shape, 70)]).T,
-                                     dw_stop=y - 6504700)
-    if 0:
+                                     dw_stop=np.full(x.shape, 2000))
+    if 1:
         fm.plot_wake_map()
         for sl in stream_lines:
             plt.plot(sl[:, 0], sl[:, 1])
@@ -356,7 +358,7 @@ def test_Streamlinesparquefictio_yz():
     wd = np.array([270])
     sim_res = wfm(wt_x, wt_y, wd=wd, ws=10)
     dw = site.distance(wt_x, wt_y, wt_x * 0 + wt.hub_height(), wd_l=wd,
-                       WD_ilk=np.repeat(wd[na, na], len(wt_x), 0))[0][:, :, 0, 0]
+                       WD_ilk=np.repeat(wd[na, na], len(wt_x), 0), time=False)[0][:, :, 0, 0]
     # streamline downwind distance (positive numbers, upper triangle) cannot be shorter than
     # straight line distances in opposite direction (negative numbers, lower triangle)
     assert (dw + dw.T).min() >= 0

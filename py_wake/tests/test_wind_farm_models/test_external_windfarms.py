@@ -18,11 +18,7 @@ from py_wake.utils.profiling import profileit, timeit
 from py_wake.utils.streamline import VectorField3D
 from py_wake.wind_farm_models import All2AllIterative, PropagateDownwind
 from py_wake.wind_farm_models.external_wind_farm_models import (
-    ExternalWFMWindFarm,
-    ExternalWindFarm,
-    ExternalXRAbsWindFarm,
-    ExternalXRRelWindFarm,
-)
+    ExternalWFMWindFarm, ExternalXRAbsWindFarm, ExternalXRRelWindFarm)
 from py_wake.wind_turbines import WindTurbines
 
 

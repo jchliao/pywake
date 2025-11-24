@@ -320,7 +320,7 @@ class EngineeringWindFarmModel(WindFarmModel):
 
     def _get_flow_l(self, model_kwargs, wt_x_ilk, wt_y_ilk, wt_h_ilk, x_jl, y_jl, h_jl, wd, WD_ilk, WS_jlk, TI_jlk):
         dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(wt_x_ilk, wt_y_ilk, wt_h_ilk, wd_l=wd, WD_ilk=WD_ilk,
-                                                        time=model_kwargs.get('time', None), dst_xyh_jlk=(x_jl, y_jl, h_jl))
+                                                        time=model_kwargs.get('time', False), dst_xyh_jlk=(x_jl, y_jl, h_jl))
 
         if self.wec != 1:
             hcw_ijlk = hcw_ijlk / self.wec
@@ -438,8 +438,8 @@ class EngineeringWindFarmModel(WindFarmModel):
             return ({k: arg_funcs[k](l, j) for k in arg_funcs},
                     *[(v, v[:, slice(l[0], l[-1] + 1)])[np.shape(v)[1] == L] for v in [wt_x_ilk, wt_y_ilk, wt_h_ilk]],
                     x_jl[js, ls], y_jl[js, ls], np.broadcast_to(h_jl, x_jl.shape)[js, ls], wd[l], WD_il[:, l],
-                    lw_j.WS_ilk[:, (l, [0])[lw_j.WS_ilk.shape[1] == 1]],
-                    lw_j.TI_ilk[:, (l, [0])[lw_j.TI_ilk.shape[1] == 1]])
+                    lw_j.WS_ilk[(j, [0])[lw_j.WS_ilk.shape[0] == 1]][:, (l, [0])[lw_j.WS_ilk.shape[1] == 1]],
+                    lw_j.TI_ilk[(j, [0])[lw_j.TI_ilk.shape[0] == 1]][:, (l, [0])[lw_j.TI_ilk.shape[1] == 1]])
 
         l_iter = [get_jl_args(j, l)
                   for l in np.array_split(np.arange(L).astype(int), wd_chunks)
@@ -738,7 +738,7 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
                 dst_xyh_jlk = [get_pos(kwargs[k + '_ilk'], i_dw.T, i_wd_l) for k in 'xyh']
                 dw_ijlk, hcw_ijlk, dh_ijlk = self.site.distance(
                     *[get_pos(kwargs[k + '_ilk'], i_wt_l, i_wd_l)[na] for k in 'xyh'], wd_l=wd, WD_ilk=WD_mk[m][na],
-                    dst_xyh_jlk=dst_xyh_jlk)
+                    time=kwargs.get('time', False), dst_xyh_jlk=dst_xyh_jlk)
 
                 for inputModidifierModel in self.inputModifierModels:
                     modified_input_dict = inputModidifierModel(**model_kwargs)
@@ -937,7 +937,7 @@ class All2AllIterative(EngineeringWindFarmModel):
             self.direction = 'down'
             WS_eff_ilk = PropagateUpDownIterative._propagate_deficit(
                 self, wd, dw_order_indices_ld, WD_ilk=WD_ilk, WS_ilk=WS_ilk, TI_ilk=TI_ilk,
-                WS_eff_ilk=WS_eff_ilk, TI_eff_ilk=TI_eff_ilk, D_i=D_i, I=I, L=L, K=K, **kwargs)[0]
+                WS_eff_ilk=WS_eff_ilk, TI_eff_ilk=TI_eff_ilk, D_i=D_i, I=I, L=L, K=K, time=time, **kwargs)[0]
             self.blockage_deficitModel = blockage_deficitModel
         elif np.all(WS_eff_ilk == 0):
             WS_eff_ilk = WS_ILK + 0.
@@ -952,7 +952,8 @@ class All2AllIterative(EngineeringWindFarmModel):
         a = 1
 
         dst_xyh_jlk = [kwargs[k + '_ilk'] for k in 'xyh']
-        dw_iilk, hcw_iilk, dh_iilk = self.site.distance(*[kwargs[k + '_ilk'] for k in 'xyh'], wd_l=wd, WD_ilk=WD_ilk)
+        dw_iilk, hcw_iilk, dh_iilk = self.site.distance(*[kwargs[k + '_ilk'] for k in 'xyh'],
+                                                        wd_l=wd, WD_ilk=WD_ilk, time=time)
         kwargs['WD_ilk'] = WD_ilk
 
         wt_kwargs = self.get_wt_kwargs(TI_eff_ilk, kwargs)

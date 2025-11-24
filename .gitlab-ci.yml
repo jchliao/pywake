@@ -13,6 +13,7 @@ test_PyWake:  # name the job what we like
   script:
   - pip install --upgrade pip
   - pip install -e .[test] --timeout 100 --resume-retries 3 #, fails anyway if Tensorflow does not install in <10min
+  - python -c "from pathlib import Path; p=Path.home()/'.config/windkit/windkit.ini'; p.parent.mkdir(parents=True, exist_ok=True); p.write_text('[user_data]\nname=test\nemail=test@dtu.dk\ninstitution=DTU Wind')"
   - python -V
   - pip list
   - pytest
@@ -44,6 +45,7 @@ test_PyWake_windows:  # name the job what we like
   image: registry.windenergy.dtu.dk/dockerimages/windows-python:ltsc2019_py312
   script:  # runs on windows machine due to tag below
   - pip install -e .[test]
+  - python -c "import os; from pathlib import Path; p=Path(os.getenv('APPDATA'))/'DTU Wind Energy/windkit/windkit.ini'; p.parent.mkdir(parents=True, exist_ok=True); p.write_text('[user_data]\nname=test\nemail=test@dtu.dk\ninstitution=DTU Wind')"
   - python -V
   - pip list
   - pytest --cov-report term-missing:skip-covered --cov-report xml:coverage.xml --cov=py_wake --cov-config .coveragerc
@@ -102,6 +104,7 @@ build_pages:  # "pages" is a job specifically for GitLab pages [1]
   - apt-get -y install make pandoc graphviz
   - pip install --upgrade pip
   - pip install -e .[test,docs]
+  - python -c "from pathlib import Path; p=Path.home()/'.config/windkit/windkit.ini'; p.parent.mkdir(parents=True, exist_ok=True); p.write_text('[user_data]\nname=test\nemail=test@dtu.dk\ninstitution=DTU Wind')"
   - cd docs/validation_report
   - python generate_validation_figures.py
   - cd report

@@ -1,8 +1,11 @@
-import pytest
-from py_wake.utils.check_input import check_input
-from py_wake import np
 from pathlib import Path
-from py_wake.tests import ptf
+
+import pytest
+
+from py_wake import np
+from py_wake.tests import clear_ptf, ptf
+from py_wake.utils.check_input import check_input
+import time
 
 
 def test_check_input():
@@ -21,5 +24,13 @@ def test_check_input():
 
 
 def test_ptf():
-    assert Path(ptf('test.txt',
-                    'ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae')).read_text() == 'test123'
+    f = Path(ptf('test.txt', 'ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae'))
+    assert f.read_text() == 'test123'
+    for _ in range(3):
+        try:
+            clear_ptf()
+            break
+        except Exception:
+            time.sleep(0.5)
+    assert f.exists() is False
+    assert f.parent.exists() is False

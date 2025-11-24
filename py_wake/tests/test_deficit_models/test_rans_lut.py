@@ -1,20 +1,21 @@
+import matplotlib.pyplot as plt
+import xarray as xr
+
 from py_wake import np
-from py_wake.wind_turbines import WindTurbine
+from py_wake.deficit_models.rans_lut import RANSLUT, RANSLUTDemoDeficit
+from py_wake.examples.data import hornsrev1
 from py_wake.examples.data.hornsrev1 import HornsrevV80
+from py_wake.flow_map import HorizontalGrid
 from py_wake.site._site import UniformSite
 from py_wake.tests import npt, ptf
-import matplotlib.pyplot as plt
-from py_wake.deficit_models.rans_lut import RANSLUT, RANSLUTDemoDeficit
-from py_wake.flow_map import HorizontalGrid
-from py_wake.utils.grid_interpolator import GridInterpolator
-from py_wake.wind_farm_models.engineering_models import All2AllIterative
-from py_wake.utils.profiling import timeit
-import xarray as xr
-from py_wake.utils.rans_lut_utils import ADControl, get_Ellipsys_equivalent_output
 from py_wake.turbulence_models.rans_lut_turb import RANSLUTDemoTurbulence
-from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
-from py_wake.examples.data import hornsrev1
+from py_wake.utils.grid_interpolator import GridInterpolator
+from py_wake.utils.profiling import timeit
+from py_wake.utils.rans_lut_utils import ADControl, get_Ellipsys_equivalent_output
+from py_wake.wind_farm_models.engineering_models import All2AllIterative
+from py_wake.wind_turbines import WindTurbine
 from py_wake.wind_turbines._wind_turbines import WindTurbines
+from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
 
 
 def test_rans_lut_deficit():
@@ -277,7 +278,7 @@ def test_RANSLUT_multiturbine():
     v80 = HornsrevV80()
     v120 = WindTurbine('V120', 120, 70, powerCtFunction=PowerCtTabular(
         hornsrev1.power_curve[:, 0], hornsrev1.power_curve[:, 1], 'w', hornsrev1.ct_curve[:, 1]))
-    wts = WindTurbine.from_WindTurbines([v80, v120])
+    wts = WindTurbines.from_WindTurbine_lst([v80, v120])
 
     wfm = RANSLUT([ds, lut_V120], UniformSite(ti=0.075 * 0.8), wts)
     type_i = np.array([0, 0, 1, 1])
