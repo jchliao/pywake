@@ -72,7 +72,7 @@ class ExternalWFMWindFarm(ExternalWindFarm):
         return self.wfm(**{**self.wfm_kwargs, 'ws': ws, 'wd': wd})
 
     def __call__(self, i, l, deficit_jlk, WS_jlk, WS_eff_ilk,
-                 WD_ilk, dst_xyh_jlk, IJLK, dw_ijlk, hcw_ijlk, dh_ijlk, **_):
+                 WD_ilk, dst_xyh_jlk, IJLK, dw_ijlk, hcw_ijlk, dh_ijlk, time=False, **_):
         I, J, L, K = IJLK
         WD_l = np.round(WD_ilk[np.minimum(i, len(WD_ilk) - 1), :, 0])
         m_lst = [m for m, wd in enumerate(WD_l) if l[m] and self.include_wd_func(wd)]
@@ -82,7 +82,7 @@ class ExternalWFMWindFarm(ExternalWindFarm):
             M = len(m_lst)
             ws_lst = np.sort(np.unique(np.r_[WS_eff_ilk.min(), np.round(WS_eff_ilk.flatten()), WS_eff_ilk.max()]))
             wd_lst = WD_l[m_lst]
-            sim_res = self.wfm(**{**self.wfm_kwargs, 'ws': ws_lst, 'wd': np.sort(np.unique(wd_lst))})
+            sim_res = self.wfm(**{**self.wfm_kwargs, 'ws': ws_lst, 'wd': np.sort(np.unique(wd_lst)), 'time': time})
             from py_wake.site.streamline_distance import StreamlineDistance
             if isinstance(self.wfm.site.distance, StreamlineDistance):
                 # Simulation and flow map of external WF is computed with stream line distances
