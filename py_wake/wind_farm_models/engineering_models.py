@@ -409,7 +409,7 @@ class EngineeringWindFarmModel(WindFarmModel):
         aep_j = (power_jlk * lw_j.P_ilk).sum((1, 2))
         return aep_j * 365 * 24 * 1e-9
 
-    def _flow_map(self, x_jl, y_jl, h_jl, lw, wd, ws, sim_res_data, D_dst=0, memory_GB=1, n_cpu=1):
+    def _flow_map(self, x_jl, y_jl, h_jl, lw, wd, ws, sim_res_data, D_dst=0, memory_GB=1, n_cpu=1, verbose=None):
         """call this function via SimulationResult.flow_map"""
         wd, ws = np.atleast_1d(wd), np.atleast_1d(ws)
         arg_funcs, lw_j, WD_il = self.get_map_args(x_jl, y_jl, h_jl, lw, wd, ws, sim_res_data, D_dst=D_dst)
@@ -426,7 +426,8 @@ class EngineeringWindFarmModel(WindFarmModel):
         min_j_chunks = np.minimum(int(np.ceil(n_cpu / wd_chunks)), J)
         j_chunks = int(np.clip(np.ceil(size_GB / wd_chunks / memory_GB), min_j_chunks, J))
 
-        map_func = get_starmap_func(n_cpu=n_cpu, verbose=wd_chunks + j_chunks > 2 and self.verbose, desc='Calculate flow map',
+        verbose = verbose or self.verbose
+        map_func = get_starmap_func(n_cpu=n_cpu, verbose=wd_chunks + j_chunks > 2 and verbose, desc='Calculate flow map',
                                     unit='wd', leave=0)
         wt_x_ilk, wt_y_ilk, wt_h_ilk = [sim_res_data[k].ilk() for k in ['x', 'y', 'h']]
 

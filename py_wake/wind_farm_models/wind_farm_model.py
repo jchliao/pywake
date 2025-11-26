@@ -742,7 +742,7 @@ class SimulationResult(xr.Dataset):
         else:  # pragma: no cover
             raise NotImplementedError()
 
-    def flow_map(self, grid=None, wd=None, ws=None, time=None, D_dst=0, memory_GB=1, n_cpu=1):
+    def flow_map(self, grid=None, wd=None, ws=None, time=None, D_dst=0, memory_GB=.1, n_cpu=1, verbose=None):
         """Return a FlowMap object with WS_eff and TI_eff of all grid points
 
         Parameters
@@ -779,7 +779,7 @@ class SimulationResult(xr.Dataset):
         wd, ws, sim_res = self._get_flow_map_args(wd, ws, time)
         lw_j, WS_eff_jlk, TI_eff_jlk = self.windFarmModel._flow_map(
             x_j[:, na], y_j[:, na], h_j[:, na], self.localWind, wd, ws, sim_res, D_dst=D_dst,
-            memory_GB=memory_GB, n_cpu=n_cpu)
+            memory_GB=memory_GB, n_cpu=n_cpu, verbose=verbose)
         return FlowMap(sim_res, X, Y, lw_j, WS_eff_jlk, TI_eff_jlk, plane=plane)
 
     def _get_flow_map_args(self, wd, ws, time):

@@ -1,8 +1,9 @@
-from py_wake.utils.streamline import VectorField3D
 import numpy as np
 from scipy.interpolate._rgi import RegularGridInterpolator as RGI
-from py_wake.site.xrsite import XRSite
+
 from py_wake.site.streamline_distance import StreamlineDistance
+from py_wake.site.xrsite import XRSite
+from py_wake.utils.streamline import VectorField3D
 
 
 def wrf2pywake(ds, TI=None):

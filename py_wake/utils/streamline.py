@@ -34,8 +34,13 @@ class VectorField3D():
         return VectorField3D(da.transpose('wd', 'x', 'y', 'h', 'v_xyz'))
 
     def stream_lines(self, wd, start_points, dw_stop, time=False, step_size=20):
-        # print(np.shape(wd), np.shape(start_points), time)
+        start_points = np.atleast_2d(start_points)
         stream_lines = [start_points]
+        dw_stop = np.zeros(len(start_points)) + dw_stop
+        wd = np.zeros(len(start_points)) + wd
+        if time is not False:
+            time = np.zeros(len(start_points)) + time
+
         m = np.arange(len(wd))
         co, si = np.cos(np.deg2rad(270 - wd)), np.sin(np.deg2rad(270 - wd))
         t = time

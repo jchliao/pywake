@@ -6,6 +6,7 @@ import pytest
 from py_wake.wind_farm_models.engineering_models import PropagateDownwind, All2AllIterative
 from py_wake.deficit_models.noj import NOJLocalDeficit
 from py_wake.flow_map import XYGrid
+from py_wake.site.wrf import WRFSite
 
 
 @pytest.mark.parametrize('streamlines,ref', [(False, [548.22095, 26.745916]),
@@ -21,6 +22,7 @@ def test_Hornsrev1WRFSite(streamlines, ref):
 
     t = 9
     dw, cw = [v[0, 1, 0, 0] for v in site.distance(x[:2], y[:2], x[:2] * 0 + h, wd_l=[0], time=[t])[:2]]
+
     if 0:
         X, Y = np.meshgrid(site.ds.x.values, site.ds.y.values)
         theta = np.deg2rad(270 - site.ds.WD)
@@ -49,3 +51,25 @@ def test_Hornsrev1WRFSite(streamlines, ref):
         npt.assert_array_equal(fm.wd, [0, 10, 20])
         fm = sim_res.flow_map(XYGrid(resolution=20), time=1)
         npt.assert_array_equal(fm.wd, [10])
+
+
+@pytest.mark.parametrize('wt_idx,wd,t,ref_shape', [
+    (0, 0, 9, (1, 12, 3)),  # 1 wt, 1 wd, 1 time
+    ([0], 0, 9, (1, 12, 3)),  # 1 wt, 1 wd, 1 time
+    ([0, 1], [0, 0], [9, 9], (2, 12, 3)),  # 2 wt, same wd and time
+    ([0, 1], 0, 9, (2, 12, 3)),  # 2 wt, same wd and time
+    ([0, 0], [0, 10], [9, 10], (2, 12, 3)),  # 1 wt, two wd and time
+    ([0, 0], [0, 10], 0, (2, 21, 3)),  # 1 wt, two wd and time=0
+    ([0, 0], [0, 10], False, (2, 21, 3)),  # 1 wt, two wd and time=False (uses time=0)
+
+])
+def test_streamlines(wt_idx, wd, t, ref_shape):
+    site = Hornsrev1WRFSite(time_slice=slice(f"2020-04-27 12:00", f"2020-04-27"), streamlines=True)
+
+    x, y = site.initial_position[wt_idx].T
+    h = x * 0 + 70
+
+    streamlines = site.distance.vectorField.stream_lines(wd, time=t,
+                                                         start_points=np.array([x, y, h]).T,
+                                                         dw_stop=200)
+    npt.assert_array_equal(streamlines.shape, ref_shape)
