@@ -334,7 +334,7 @@ def test_Streamlinesparquefictio():
     x, y = x[6:], y[6:]
     stream_lines = vf3d.stream_lines(wd=np.full(x.shape, wd), start_points=np.array([x, y, np.full(x.shape, 70)]).T,
                                      dw_stop=np.full(x.shape, 2000))
-    if 1:
+    if 0:
         fm.plot_wake_map()
         for sl in stream_lines:
             plt.plot(sl[:, 0], sl[:, 1])

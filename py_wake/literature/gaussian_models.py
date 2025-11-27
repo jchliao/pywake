@@ -1,13 +1,17 @@
 import numpy as np
-from py_wake.wind_farm_models.engineering_models import PropagateDownwind
+
+from py_wake.deficit_models.gaussian import (
+    BastankhahGaussianDeficit,
+    BlondelSuperGaussianDeficit2020,
+    CarbajofuertesGaussianDeficit,
+    NiayifarGaussianDeficit,
+    ZongGaussianDeficit,
+)
 from py_wake.deficit_models.utils import ct2a_mom1d
-from py_wake.superposition_models import LinearSum, WeightedSum
-from py_wake.deficit_models.gaussian import BastankhahGaussianDeficit, NiayifarGaussianDeficit, ZongGaussianDeficit, \
-    BlondelSuperGaussianDeficit2020, CarbajofuertesGaussianDeficit
-from py_wake.turbulence_models.crespo import CrespoHernandez
-from py_wake.superposition_models import SqrMaxSum
 from py_wake.rotor_avg_models.gaussian_overlap_model import GaussianOverlapAvgModel
-from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
+from py_wake.superposition_models import LinearSum, SqrMaxSum, WeightedSum
+from py_wake.turbulence_models.crespo import CrespoHernandez
+from py_wake.wind_farm_models.engineering_models import PropagateDownwind
 
 
 class Bastankhah_PorteAgel_2014(PropagateDownwind):
@@ -280,10 +284,11 @@ class Blondel_Cathelain_2020(PropagateDownwind):
 
 def main():
     if __name__ == '__main__':
-
+        from py_wake.examples.data.hornsrev1 import V80, Hornsrev1Site, wt16_x, wt16_y
         site = Hornsrev1Site()
         windTurbines = V80()
         x, y = site.initial_position.T
+        x, y = wt16_x, wt16_y
 
         for wf_model in [Bastankhah_PorteAgel_2014(site, windTurbines, k=0.0324555),
                          Niayifar_PorteAgel_2016(site, windTurbines),

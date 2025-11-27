@@ -60,7 +60,7 @@ def check_gradients(wfm, name, wt_x=[-1300, -650, 0], wt_y=[0, 0, 0], wt_h=[110,
         h_lst = np.array([0, 0, 1.]) * np.arange(-50, 50, 5)[:, na] + wt.hub_height()
         kwargs = {'ws': [9], 'wd': [270]}
         if 'yaw_ilk' in wfm.args4all:
-            kwargs.update({'yaw': 0, 'tilt': 0, **kwargs})
+            kwargs.update({'yaw': 10, 'tilt': 5, **kwargs})
 
         xp, yp, hp = x_lst[20], y_lst[25], h_lst[2]
 

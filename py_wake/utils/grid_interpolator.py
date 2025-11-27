@@ -23,8 +23,8 @@ class GridInterpolator(object):
             - 'limit': interpolation points are forced inside the area
             - 'ignore': Faster option with no check. Use this option if data is guaranteed to be inside the area
         """
-        self.x = x.copy()
-        self.V = V
+        self.x = self.grid = x.copy()
+
         self.bounds = bounds
         self.method = method
         self.n = np.array([len(x) for x in x], dtype=int)
@@ -35,7 +35,7 @@ class GridInterpolator(object):
         self.irregular_axes_indexes = np.where(self.irregular_axes)[0]
         for i in self.irregular_axes_indexes:
             self.x[i] = np.r_[self.x[i], self.x[i][-1] + 1]
-        self.V = np.asarray(V)
+        self.V = self.values = np.asarray(V)
         if not np.all(np.asarray(self.V.shape[:len(self.n)]) == self.n):
             raise ValueError("Lengths of x does not match shape of V")
         ui = np.array([[0], [1]])

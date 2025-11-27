@@ -1,24 +1,29 @@
-from py_wake.flow_map import HorizontalGrid, YZGrid, Points, XYGrid, XZGrid
-from py_wake.tests import npt
-import matplotlib.pyplot as plt
-from py_wake import np
-from py_wake.examples.data.ParqueFicticio._parque_ficticio import ParqueFicticioSite
-from py_wake.site.distance import StraightDistance
-from py_wake.examples.data.iea37 import IEA37Site, IEA37_WindTurbines
-import pytest
-from py_wake.deflection_models.jimenez import JimenezWakeDeflection
-from py_wake.wind_turbines._wind_turbines import WindTurbines, WindTurbine
-from py_wake.examples.data import wtg_path, hornsrev1
-from py_wake.utils.profiling import timeit
-from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
-from py_wake.examples.data.hornsrev1 import V80
-from py_wake.literature.iea37_case_study1 import IEA37CaseStudy1
-from py_wake.deficit_models.gaussian import IEA37SimpleBastankhahGaussianDeficit
-from py_wake.wind_farm_models.engineering_models import PropagateDownwind, All2AllIterative
-from py_wake.superposition_models import SquaredSum
 import warnings
+
+import matplotlib.pyplot as plt
+import pytest
+
+from py_wake import np
+from py_wake.deficit_models.gaussian import IEA37SimpleBastankhahGaussianDeficit
 from py_wake.deficit_models.no_wake import NoWakeDeficit
+from py_wake.deflection_models.jimenez import JimenezWakeDeflection
+from py_wake.examples.data import hornsrev1, wtg_path
+from py_wake.examples.data.hornsrev1 import V80
+from py_wake.examples.data.iea37 import IEA37_WindTurbines, IEA37Site
+from py_wake.examples.data.ParqueFicticio._parque_ficticio import ParqueFicticioSite
+from py_wake.flow_map import HorizontalGrid, Points, XYGrid, XZGrid, YZGrid
+from py_wake.literature.iea37_case_study1 import IEA37CaseStudy1
 from py_wake.site._site import UniformSite
+from py_wake.site.distance import StraightDistance
+from py_wake.superposition_models import SquaredSum
+from py_wake.tests import npt
+from py_wake.utils.profiling import timeit
+from py_wake.wind_farm_models.engineering_models import (
+    All2AllIterative,
+    PropagateDownwind,
+)
+from py_wake.wind_turbines._wind_turbines import WindTurbine, WindTurbines
+from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
 
 
 @pytest.fixture(autouse=True)
@@ -509,8 +514,8 @@ def test_wd_dependent_dst():
     wf_h = wfm.windTurbines.hub_height()
     wf_x = 0
     wf_y = 0
-    from tqdm import tqdm
     from numpy import newaxis as na
+    from tqdm import tqdm
 
     def run_loop():
         wd_lst = sim_res.wd.values

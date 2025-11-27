@@ -1,12 +1,14 @@
 import inspect
 import os
 import pkgutil
-from py_wake import np
-from numpy import newaxis as na
-from py_wake.site._site import Site
 import warnings
-from py_wake.utils.grid_interpolator import GridInterpolator
+
+from numpy import newaxis as na
+
 import py_wake
+from py_wake import np
+from py_wake.site._site import Site
+from py_wake.utils.grid_interpolator import GridInterpolator
 
 
 class Model():
@@ -160,20 +162,28 @@ class RotorAvgAndGroundModelContainer():
 
 
 def get_exclude_dict():
-    from py_wake.deficit_models.deficit_model import ConvectionDeficitModel, WakeDeficitModel, \
-        BlockageDeficitModel
-    from py_wake.deficit_models.deficit_model import XRLUTDeficitModel
-    from py_wake.deficit_models.rans_lut import RANSLUTDeficit
-    from py_wake.rotor_avg_models.rotor_avg_model import RotorAvgModel, NodeRotorAvgModel
-    from py_wake.wind_farm_models.engineering_models import EngineeringWindFarmModel, PropagateDownwind
-    from py_wake.deflection_models.deflection_model import DeflectionIntegrator
-
-    from py_wake.superposition_models import LinearSum
+    from py_wake.deficit_models.deficit_model import (
+        BlockageDeficitModel,
+        ConvectionDeficitModel,
+        WakeDeficitModel,
+        XRLUTDeficitModel,
+    )
     from py_wake.deficit_models.noj import NOJDeficit
-    from py_wake.turbulence_models.turbulence_model import XRLUTTurbulenceModel
-    from py_wake.turbulence_models.rans_lut_turb import RANSLUTTurbulence
+    from py_wake.deficit_models.rans_lut import RANSLUTDeficit
+    from py_wake.deflection_models.deflection_model import DeflectionIntegrator
     from py_wake.ground_models.ground_models import NoGround
+    from py_wake.rotor_avg_models.rotor_avg_model import (
+        NodeRotorAvgModel,
+        RotorAvgModel,
+    )
     from py_wake.site.streamline_distance import StreamlineDistance
+    from py_wake.superposition_models import LinearSum
+    from py_wake.turbulence_models.rans_lut_turb import RANSLUTTurbulence
+    from py_wake.turbulence_models.turbulence_model import XRLUTTurbulenceModel
+    from py_wake.wind_farm_models.engineering_models import (
+        EngineeringWindFarmModel,
+        PropagateDownwind,
+    )
     return {
         "WindFarmModel": ([EngineeringWindFarmModel], [], PropagateDownwind),
         "EngineeringWindFarmModel": ([], [], PropagateDownwind),
@@ -200,9 +210,11 @@ def cls_in(A, cls_lst):
 
 def get_models(base_class, exclude_None=False, include_dirs=[]):
     if base_class is Site:
-        from py_wake.examples.data.iea37._iea37 import IEA37Site
         from py_wake.examples.data.hornsrev1 import Hornsrev1Site
-        from py_wake.examples.data.ParqueFicticio._parque_ficticio import ParqueFicticioSite
+        from py_wake.examples.data.iea37._iea37 import IEA37Site
+        from py_wake.examples.data.ParqueFicticio._parque_ficticio import (
+            ParqueFicticioSite,
+        )
         return [IEA37Site, Hornsrev1Site, ParqueFicticioSite]
     exclude_cls_lst, exclude_subcls_lst, default = get_exclude_dict()[base_class.__name__]
 
@@ -219,7 +231,9 @@ def get_models(base_class, exclude_None=False, include_dirs=[]):
         module_name = parent_module + '.' + module_name
         import importlib
         try:
-            _module = importlib.import_module(module_name)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                _module = importlib.import_module(module_name)
             for n in dir(_module):
                 v = _module.__dict__[n]
                 if inspect.isclass(v):
