@@ -220,6 +220,10 @@ class EngineeringWindFarmModel(WindFarmModel):
         # Find local wind speed, wind direction, turbulence intensity and probability
         lw = self.site.local_wind(x=np.mean(x_ilk, (1, 2)), y=np.mean(y_ilk, (1, 2)), h=h_i,
                                   wd=kwargs['wd'], ws=kwargs['ws'], time=kwargs['time'])
+        if time is False:
+            assert lw['WS_ilk'].shape[2] == len(ws), \
+                "Conflicting sizes. Number of ws must match wind speed dimension of local wind, WS"
+
         for k in ['WS_ilk', 'WD_ilk', 'TI_ilk']:
             if k in kwargs:
                 lw.add_ilk(k, kwargs.pop(k))

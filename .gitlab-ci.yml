@@ -61,6 +61,21 @@ test_PyWake_windows:  # name the job what we like
     - if: $CI_COMMIT_BRANCH == "master"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
+
+# ===== TEST PyWake on Windows GPU =====
+test_PyWake_GPU_Cupy:  # name the job what we like
+  stage: test
+  variables:
+    TRIGGER_BRANCH: $CI_COMMIT_REF_NAME
+  trigger:
+    project: TOPFARM/pywakegputest
+    strategy: depend
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
 # ===== Trigger PyWakePark pipeline =====
 trigger_pywake_park_test:
   stage: test_plugins

@@ -1,13 +1,15 @@
+import xarray as xr
 from numpy import newaxis as na
 
 from py_wake import np
-import xarray as xr
+
 try:  # pragma: no cover
     from xarray.plot.plot import _PlotMethods as DataArrayPlotAccessor
 except ModuleNotFoundError:  # pragma: no cover
     from xarray.plot.accessor import DataArrayPlotAccessor
 
 import warnings
+
 from py_wake.utils.grid_interpolator import GridInterpolator
 
 
@@ -29,7 +31,7 @@ class ilk():
                 v = v[:, na]
             if 'ws' not in dims:
                 v = v[:, :, na]
-        dtype = (np.float, np.complex)[np.iscomplexobj(v)]
+        dtype = (getattr(np, 'float', np.float64), np.complex)[np.iscomplexobj(v)]
         v = v.astype(dtype)
         if shape is None:
             return v

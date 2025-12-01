@@ -1,27 +1,27 @@
-from py_wake import np
-from numpy import asarray as np_asarray
+import inspect
+from functools import wraps
+from inspect import signature
+from itertools import count
+
+import autograd.numpy as anp
+
 # from numpy import asanyarray as np_asanyarray
 import numpy
-import autograd.numpy as anp
-from autograd.numpy.numpy_boxes import ArrayBox
-import inspect
 from autograd.core import defvjp, primitive
-from autograd.differential_operators import jacobian, elementwise_grad
-from inspect import signature
-from functools import wraps
-from xarray.core.dataarray import DataArray
-from xarray.core import variable
-from py_wake.utils import gradients
-from scipy.interpolate._cubic import PchipInterpolator as scipy_PchipInterpolator
-
-from itertools import count
-from scipy.interpolate import UnivariateSpline as scipy_UnivariateSpline
-
-
-from py_wake.utils.numpy_utils import AutogradNumpy
+from autograd.differential_operators import elementwise_grad, jacobian
+from autograd.numpy.numpy_boxes import ArrayBox
 from autograd.numpy.numpy_vjps import unbroadcast_f
-from scipy.special import gamma as sgamma
 from autograd.scipy.special import gamma as agamma
+from numpy import asarray as np_asarray
+from scipy.interpolate import UnivariateSpline as scipy_UnivariateSpline
+from scipy.interpolate._cubic import PchipInterpolator as scipy_PchipInterpolator
+from scipy.special import gamma as sgamma
+from xarray.core import variable
+from xarray.core.dataarray import DataArray
+
+from py_wake import np
+from py_wake.utils import gradients
+from py_wake.utils.numpy_utils import AutogradNumpy
 
 
 def asarray(x, dtype=None, order=None, **kwargs):
@@ -71,10 +71,12 @@ def item_assign(x, idx, values, axis=0, test=0):
 
 
 def minimum(x1, x2, out=None, where=True, **kwargs):
-    if isinstance(x1, ArrayBox) or isinstance(x2, ArrayBox):
-        return anp.where((x2 < x1) & where, x2, x1)  # @UndefinedVariable
-    else:
-        return numpy.minimum(x1, x2, out=out, where=where, **kwargs)
+    try:
+        if np.backend.minimum == minimum:
+            raise TypeError
+        return np.backend.minimum(x1, x2, out=out, where=where, **kwargs)
+    except TypeError:
+        return np.backend.where((x2 < x1) & where, x2, x1)
 
 
 def negative(x1, out=None, where=True, **kwargs):
