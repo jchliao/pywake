@@ -24,6 +24,7 @@ from py_wake.wind_farm_models.engineering_models import (
 )
 from py_wake.wind_turbines._wind_turbines import WindTurbine, WindTurbines
 from py_wake.wind_turbines.power_ct_functions import PowerCtTabular
+from py_wake.site.shear import PowerShear
 
 
 @pytest.fixture(autouse=True)
@@ -505,6 +506,7 @@ def test_IJLK():
 
 def test_wd_dependent_dst():
     wfm = IEA37CaseStudy1(16)
+    wfm.site.shear = PowerShear()
     x, y = wfm.site.initial_position.T
     sim_res = wfm(x, y, wd=np.arange(360), ws=np.arange(3, 25))
 
@@ -523,18 +525,21 @@ def test_wd_dependent_dst():
         co, si = np.cos(theta), np.sin(theta)
         x_jl = co[na] * dw[:, na] - hcw[:, na] * si[na] + wf_x
         y_jl = si[na] * dw[:, na] + hcw[:, na] * co[na] + wf_y
-        h_j = dh + wf_h
+        h_j = np.linspace(-1, 1, 100) + wf_h
+        WS_eff_jlk_lst = []
         for wd, x_j, y_j in zip(wd_lst, x_jl.T, y_jl.T):
             lw_j, WS_eff_jlk, TI_eff_jlk = wfm._flow_map(x_j[:, na], y_j[:, na], h_j[:, na], sim_res.localWind,
                                                          wd, sim_res.ws, sim_res)
+            WS_eff_jlk_lst.append(WS_eff_jlk[:, 0])
             if 0:
                 plt.contourf(x_j.reshape(X.shape), y_j.reshape(X.shape),
                              WS_eff_jlk[:, :, 7].reshape(X.shape), levels=50)
                 wfm.windTurbines.plot(x, y)
                 plt.axis('scaled')
                 plt.show()
+        return np.moveaxis(WS_eff_jlk_lst, 0, 1)
 
-    timeit(run_loop, verbose=1, line_profile=0)()
+    res_ref, _ = timeit(run_loop, verbose=1, line_profile=0)()
 
     def run_vec():
         wd_lst = sim_res.wd.values
@@ -542,7 +547,7 @@ def test_wd_dependent_dst():
         co, si = np.cos(theta), np.sin(theta)
         x_jl = co[na] * dw[:, na] - hcw[:, na] * si[na] + wf_x
         y_jl = si[na] * dw[:, na] + hcw[:, na] * co[na] + wf_y
-        h_jl = dh[:, na] + wf_h
+        h_jl = np.linspace(-1, 1, 100)[:, na] + wf_h
 
         lw_j, WS_eff_jlk, TI_eff_jlk = wfm._flow_map(x_jl, y_jl, h_jl, sim_res.localWind,
                                                      wd_lst, sim_res.ws, sim_res)
@@ -553,5 +558,7 @@ def test_wd_dependent_dst():
                 wfm.windTurbines.plot(x, y)
                 plt.axis('scaled')
                 plt.show()
+        return WS_eff_jlk
 
-    timeit(run_vec, verbose=1, line_profile=0)()
+    res, _ = timeit(run_vec, verbose=1, line_profile=0)()
+    npt.assert_array_equal(res_ref, res)

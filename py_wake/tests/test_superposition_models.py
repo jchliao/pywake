@@ -168,10 +168,14 @@ def test_superpositionModels_rotor_avg_model(superpositionModel):
                   superpositionModel=superpositionModel(), turbulenceModel=CrespoHernandez())
     wfm_a2a = All2AllIterative(**kwargs)
     wfm_pdw = PropagateDownwind(**kwargs)
+    wfm_rc = PropagateDownwind(**{**kwargs, 'wake_deficitModel': NiayifarGaussianDeficit()})
+
     operating = [1] * 8 + [0]
     sim_res_a2a = wfm_a2a(wt9_x, wt9_y, operating=operating)
     sim_res_pdw = wfm_pdw(wt9_x, wt9_y, operating=operating)
     npt.assert_array_almost_equal(sim_res_a2a.WS_eff.sel(wt=8), sim_res_pdw.WS_eff.sel(wt=8))
+    sim_res_rc = wfm_rc(wt9_x, wt9_y, operating=operating)
+    npt.assert_array_less(sim_res_rc.WS_eff.sel(wd=270)[3:], sim_res_pdw.WS_eff.sel(wd=270)[3:])
 
 
 def test_squaredSum_speedups():

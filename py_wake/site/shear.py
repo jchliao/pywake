@@ -33,7 +33,7 @@ class PowerShear(Shear):
 
     def __call__(self, localWind, WS_ilk, h):
         alpha = self.alpha.interp_ilk(localWind.coords, interp_method=self.interp_method)
-        return (h / self.h_ref)[:, na, na] ** alpha * WS_ilk
+        return (h / self.h_ref).reshape((h.shape + (1, 1))[:3]) ** alpha * WS_ilk
 
 
 class MOSTShear(Shear):
@@ -50,7 +50,8 @@ class MOSTShear(Shear):
         assert np.all(h > 0), f"LogShear invalid at z=0"
         z0 = self.z0.interp_ilk(localWind.coords, interp_method=self.interp_method)
         L_inv = self.h_zeta / self.h_ref  # 1 / Obukhov length
-        return (np.log(h[:, na, na] / z0) - psi(h[:, na, na] * L_inv, Cm1=self.Cm1, Cm2=self.Cm2)) / (np.log(self.h_ref / z0) - psi(self.h_zeta, Cm1=self.Cm1, Cm2=self.Cm2)) * WS_ilk
+        return (np.log(h[:, na, na] / z0) - psi(h[:, na, na] * L_inv, Cm1=self.Cm1, Cm2=self.Cm2)) / \
+            (np.log(self.h_ref / z0) - psi(self.h_zeta, Cm1=self.Cm1, Cm2=self.Cm2)) * WS_ilk
 
 
 class LogShear(MOSTShear):
