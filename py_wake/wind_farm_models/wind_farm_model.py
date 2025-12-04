@@ -432,7 +432,7 @@ class SimulationResult(xr.Dataset):
         n_wt = len(lw.i)
 
         coords = {k: (dep, v, {'Description': d}) for k, dep, v, d in [
-            ('wt', 'wt', np.arange(n_wt), 'Wind turbine number'),
+            ('wt', 'wt', np.arange(n_wt, dtype=int), 'Wind turbine number'),
             ('wd', ('wd', 'time')['time' in lw], lw.wd, 'Ambient reference wind direction [deg]'),
             ('ws', ('ws', 'time')['time' in lw], lw.ws, 'Ambient reference wind speed [m/s]'),
             ('type', 'wt', np.zeros((n_wt,), dtype=int) + type_i, 'Wind turbine type')]}
