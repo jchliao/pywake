@@ -22,7 +22,7 @@ class FugaDeflection(FugaUtils, DeflectionModel):
             # interpolate to hub height
             jh = np.floor(np.log(self.zHub / self.z0) / self.ds)
             zlevels = [jh, jh + 1]
-            tabs = self.load_luts(['VL', 'VT'], zlevels).reshape(2, 2, -1, len(self.x))
+            tabs = self.load_luts(['VL', 'VT'], zlevels).reshape(2, 2, len(self.y), len(self.x))
             t = np.modf(np.log(self.zHub / self.z0) / self.ds)[0]
             tabs = tabs[:, 0] * (1 - t) + t * tabs[:, 1]
 
@@ -42,7 +42,8 @@ class FugaDeflection(FugaUtils, DeflectionModel):
 
         self.fLtab = fL = np.concatenate([-fL[::-1], fL[1:]], 0)
         self.fTtab = fT = np.concatenate([fT[::-1], fT[1:]], 0)
-        self.fLT = GridInterpolator([self.x, self.mirror(self.y, anti_symmetric=True)], np.array([fL, fT]).T, bounds='limit')
+        self.fLT = GridInterpolator([self.x, self.mirror(self.y, anti_symmetric=True)],
+                                    np.array([fL, fT]).T, bounds='limit')
 
     def calc_deflection(self, dw_ijlk, hcw_ijlk, dh_ijlk, WS_ilk, WS_eff_ilk, yaw_ilk, ct_ilk, D_src_il, **_):
         I, L, K = ct_ilk.shape

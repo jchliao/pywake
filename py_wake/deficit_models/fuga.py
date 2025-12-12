@@ -141,7 +141,8 @@ class FugaMultiLUTDeficit(XRLUTDeficitModel):
         lim = self.da.y.max().item()
 
         def get_mdu(hcw_ijlk, dw_ijlk=dw_ijlk):
-            hcw_ijlk = np.nan_to_num(np.clip(hcw_ijlk, -lim, lim), nan=lim)
+            hcw_ijlk = np.clip(hcw_ijlk, -lim, lim)
+            hcw_ijlk = np.where(np.isnan(hcw_ijlk), lim, hcw_ijlk)
             return self._calc_mdu(D_src_il=D_src_il, dw_ijlk=dw_ijlk,
                                   hcw_ijlk=hcw_ijlk, h_ilk=h_ilk, z_ijlk=z_ijlk, TI_ilk=TI_ilk, **kwargs)
         mdu_target = get_mdu(dw_ijlk * 0) * np.exp(-2)  # corresponding to 2 sigma
