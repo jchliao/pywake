@@ -1,17 +1,22 @@
-from py_wake import np
-import pandas as pd
-import matplotlib.pyplot as plt
-from py_wake.examples.data.iea34_130rwt._iea34_130rwt import IEA34_130_1WT_Surrogate, IEA34_130_2WT_Surrogate
-from py_wake.tests import npt
-from py_wake.deficit_models.noj import NOJ
-from py_wake.site.xrsite import UniformSite
-from py_wake.turbulence_models.stf import STF2017TurbulenceModel
 from pathlib import Path
-from py_wake.wind_turbines.wind_turbine_functions import FunctionSurrogates
-from py_wake.examples.data import example_data_path
-from py_wake.utils.gradients import plot_gradients, fd, autograd, cs
+
+import matplotlib.pyplot as plt
+import pandas as pd
 import pytest
 from surrogates_interface.surrogates import TensorFlowModel
+
+from py_wake import np
+from py_wake.deficit_models.noj import NOJ
+from py_wake.examples.data import example_data_path
+from py_wake.examples.data.iea34_130rwt._iea34_130rwt import (
+    IEA34_130_1WT_Surrogate,
+    IEA34_130_2WT_Surrogate,
+)
+from py_wake.site.xrsite import UniformSite
+from py_wake.tests import npt
+from py_wake.turbulence_models.stf import STF2017TurbulenceModel
+from py_wake.utils.gradients import autograd, cs, fd, plot_gradients
+from py_wake.wind_turbines.wind_turbine_functions import FunctionSurrogates
 
 
 @pytest.fixture(scope='module')
@@ -136,7 +141,7 @@ def test_two_turbine_case0_time_series(iea34_130_2WT_Surrogate):
     wt = iea34_130_2WT_Surrogate
     site = UniformSite(p_wd=[1], ti=ti, ws=ws)
     wfm = NOJ(site, wt, turbulenceModel=STF2017TurbulenceModel())
-    sim_res = wfm([0, 0], [0, dist * 130], wd=wdir, time=True, Alpha=shear)
+    sim_res = wfm([0, 0], [0, dist * 130], ws=ws, wd=wdir, time=True, Alpha=shear)
 
     npt.assert_allclose(ws, ws_ref, rtol=.006)
     # npt.assert_allclose(ti, ws_std_ref / ws_ref, atol=.19)

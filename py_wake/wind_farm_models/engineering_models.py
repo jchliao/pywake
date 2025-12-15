@@ -209,7 +209,7 @@ class EngineeringWindFarmModel(WindFarmModel):
         """
 
         h_i, D_i = self.windTurbines.get_defaults(len(x_ilk), type_i, h_i)
-        wd, ws = self.site.get_defaults(wd, ws)
+        wd, ws = self.site.get_defaults(wd, ws, time)
         I, L, K, = len(x_ilk), len(wd), (1, len(ws))[time is False]
         kwargs.update(dict(x_ilk=x_ilk, y_ilk=y_ilk, h_ilk=h_i[:, na, na], wd=wd, ws=ws, time=time,
                            type_i=np.zeros_like(D_i) + type_i))
@@ -799,13 +799,8 @@ class PropagateUpDownIterative(EngineeringWindFarmModel):
 
                     for i, ewf in enumerate(self.externalWindFarms, I - len(self.externalWindFarms)):
                         # print(i)
-                        deficit = ewf(i=0, l=i_wt_l == i,
-                                      deficit_jlk=deficit[0],
-
-                                      **model_kwargs,
-                                      # **{**model_kwargs, 'dw_ijlk': sdw_ijlk, 'hcw_ijlk': shcw_ijlk, 'dh_ijlk': sdh_ijlk}
-                                      dst_xyh_jlk=dst_xyh_jlk
-                                      )[na]
+                        deficit = ewf(i=0, l=i_wt_l == i, deficit_jlk=deficit[0],
+                                      **model_kwargs, dst_xyh_jlk=dst_xyh_jlk)[na]
 
                     if self.blockage_deficitModel:
                         blockage_nk.append(blockage[0])

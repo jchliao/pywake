@@ -1,6 +1,5 @@
 import multiprocessing
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
 
 import xarray as xr
 from numpy import atleast_1d
@@ -72,7 +71,7 @@ class WindFarmModel(ABC):
             y = np.r_[y, [wf.wf_y for wf in self.externalWindFarms]]
             h = np.r_[h, [np.mean(wf.windTurbines.hub_height(wf.windTurbines.types()))
                           for wf in self.externalWindFarms]]
-        wd, ws = self.site.get_defaults(wd, ws)
+        wd, ws = self.site.get_defaults(wd, ws, time)
         I, L, K, = len(x), len(np.atleast_1d(wd)), (1, len(np.atleast_1d(ws)))[time is False]
         if len([k for k in kwargs if 'yaw' in k.lower() and k != 'yaw' and not k.startswith('yawc_')]):
             raise ValueError(
@@ -141,12 +140,6 @@ class WindFarmModel(ABC):
         If return_simulationResult is False the functino returns a tuple of:
         WS_eff_ilk, TI_eff_ilk, power_ilk, ct_ilk, localWind, kwargs_ilk
         """
-        if isinstance(time, Iterable) and (len(ws if ws is not None else []) != len(time) or
-                                           len(wd if wd is not None else []) != len(time)
-                                           ):  # avoid redundant passing wd & ws for time series sites
-            wd = np.zeros(len(time))
-            ws = np.zeros(len(time))
-
         res = self._run(x, y, h=h, type=type, wd=wd, ws=ws, time=time, verbose=verbose,
                         n_cpu=n_cpu, wd_chunks=wd_chunks, ws_chunks=ws_chunks, **kwargs)
         if return_simulationResult:
@@ -158,7 +151,7 @@ class WindFarmModel(ABC):
         else:
             return res
 
-    def aep(self, x, y, h=None, type=0, wd=None, ws=None,  # @ReservedAssignment
+    def aep(self, x, y, h=None, type=0, wd=None, ws=None, time=False,  # @ReservedAssignment
             normalize_probabilities=False, with_wake_loss=True,
             n_cpu=1, wd_chunks=None, ws_chunks=1, **kwargs):
         """Anual Energy Production (sum of all wind turbines, directions and speeds) in GWh.
@@ -168,7 +161,7 @@ class WindFarmModel(ABC):
         >> sim_res.aep()
 
         This function bypasses the simulation result and returns only the total AEP,
-        which makes it slightly faster for small problems.
+        which makes it slightly faster for small problems and avoids the intermediate xarray SimulationResult.
         >> windFarmModel.aep(x,y,...)
 
         Parameters
@@ -185,6 +178,10 @@ class WindFarmModel(ABC):
             Wind direction(s)
         ws : int, float or array_like
             Wind speed(s)
+        time : boolean or array_like
+            If False (default), the simulation will be computed for the full wd x ws matrix
+            If True, the wd and ws will be considered as a time series of flow conditions with time stamp 0,1,..,n
+            If array_like: same as True, but the time array is used as flow case time stamp
         yaw : int, float, array_like or None, optional
             Yaw misalignement, Positive is counter-clockwise when seen from above.
             May be
@@ -216,7 +213,7 @@ class WindFarmModel(ABC):
         AEP in GWh
 
         """
-        res = self._run(x, y, h=h, type=type, wd=wd, ws=ws,
+        res = self._run(x, y, h=h, type=type, wd=wd, ws=ws, time=time,
                         n_cpu=n_cpu, wd_chunks=wd_chunks, ws_chunks=ws_chunks, **kwargs)
         _, _, power_ilk, _, localWind, kwargs_ilk = res
         P_ilk = localWind.P_ilk
@@ -226,7 +223,7 @@ class WindFarmModel(ABC):
             norm = 1
 
         if with_wake_loss is False:
-            wd, ws = self.site.get_defaults(wd, ws)
+            wd, ws = self.site.get_defaults(wd, ws, time)
             I, L, K, = len(x), len(np.atleast_1d(wd)), len(np.atleast_1d(ws))
             power_ilk = np.broadcast_to(self.windTurbines.power(ws=localWind.WS_ilk,
                                                                 **self.get_wt_kwargs(localWind.TI.ilk(), kwargs_ilk)), (I, L, K))
@@ -347,7 +344,7 @@ class WindFarmModel(ABC):
                            x, y, h=None, type=0, wd=None, ws=None,   # @ReservedAssignment
                            normalize_probabilities=False, with_wake_loss=True,
                            n_cpu=1, wd_chunks=None, ws_chunks=None, time=False, **kwargs):
-        wd, ws = self.site.get_defaults(wd, ws)
+        wd, ws = self.site.get_defaults(wd, ws, time)
         wd_bin_size = self.site.wd_bin_size(wd)
 
         map_func, kwargs_lst, wd_chunks, ws_chunks = self._multiprocessing_chunks(

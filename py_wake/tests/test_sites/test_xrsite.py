@@ -22,6 +22,7 @@ import warnings
 from urllib.error import HTTPError, URLError
 from py_wake.examples.data.ParqueFicticio._parque_ficticio import ParqueFicticioSite
 from py_wake.utils.gradients import fd, autograd, cs
+from py_wake.utils.functions import mean_deg
 
 
 f = [0.035972, 0.039487, 0.051674, 0.070002, 0.083645, 0.064348,
@@ -235,6 +236,8 @@ def test_complex_grid_local_wind_time(complex_grid_site):
     site.ds['TI'] = (['x', 'y', 'wd'], np.arange(3 * 2 * 13).reshape(3, 2, 13))
     wdir_lst = [0, 1, 2, 1, 0]
     wsp_lst = [9, 10, 9, 10, 11]
+    with pytest.raises(ValueError, match='wd and ws must be specified for time series'):
+        site.local_wind(x=[2.5, 7.5], y=[2.5, 2.5], h=100, ws=wsp_lst, time=True)
     lw = site.local_wind(x=[2.5, 7.5], y=[2.5, 2.5], h=100, wd=wdir_lst, ws=wsp_lst, time=True)
     assert lw.WS_ilk.shape == (2, 5, 1)
     assert lw.WD_ilk.shape == (2, 5, 1)
@@ -777,13 +780,8 @@ def test_non_uniform_ts_xrsite_compute_local_wind_without_ref_ws_wd_inputs():
             ),
         )
     )
-
     # test local wind compute without ref ws and wd inputs
-    ws0 = non_uniform_ts_site.local_wind(
-        site_x[1],
-        site_y[2],
-        time=[3],
-    )["WS_ilk"]
+    ws0 = non_uniform_ts_site.local_wind(site_x[1], site_y[2], time=[3], wd=[0], ws=[0])["WS_ilk"]
     assert ws0 == site_ws[1, 2, 3]
 
     # try wfm call with the site and no ref ws & wd
@@ -794,10 +792,6 @@ def test_non_uniform_ts_xrsite_compute_local_wind_without_ref_ws_wd_inputs():
         wake_deficitModel=BastankhahGaussianDeficit(),
         superpositionModel=LinearSum(),
     )
-    aep = (
-        wf_model([site_x[1], site_x[2]], [site_y[1], site_y[2]], time=site_time)
-        .aep()
-        .sum()
-        .values
-    )
+    ws, wd = site_ws.mean((0, 1)), mean_deg(site_wd, (0, 1))
+    aep = (wf_model(site_x[1:3], site_y[1:3], time=site_time, ws=ws, wd=wd).aep().sum().values)
     assert aep > 0.0
