@@ -1,4 +1,3 @@
-import multiprocessing
 from abc import ABC, abstractmethod
 
 import xarray as xr
@@ -13,7 +12,7 @@ from py_wake.utils import weibull, xarray_utils  # register ilk function @Unused
 from py_wake.utils.functions import arg2ilk
 from py_wake.utils.gradients import autograd
 from py_wake.utils.model_utils import check_model, fix_shape
-from py_wake.utils.parallelization import get_pool_map, get_pool_starmap
+from py_wake.utils.parallelization import get_map_func, get_n_cpu
 from py_wake.wind_turbines import WindTurbines
 
 
@@ -284,9 +283,8 @@ class WindFarmModel(ABC):
             Local free-flow wind
         """
 
-    def _multiprocessing_chunks(self, wd, ws, time,
-                                n_cpu, wd_chunks, ws_chunks, **kwargs):
-        n_cpu = n_cpu or multiprocessing.cpu_count()
+    def _multiprocessing_chunks(self, wd, ws, time, n_cpu, wd_chunks, ws_chunks, **kwargs):
+        n_cpu = get_n_cpu(n_cpu)
         wd_chunks = int(np.minimum(wd_chunks or n_cpu, len(wd)))
         ws_chunks = int(np.minimum(ws_chunks or 1, len(ws)))
 
@@ -295,13 +293,6 @@ class WindFarmModel(ABC):
 
         wd_i = np.linspace(0, len(wd) + 1, wd_chunks + 1).astype(int)
         ws_i = np.linspace(0, len(ws) + 1, ws_chunks + 1).astype(int)
-        if n_cpu > 1:
-            map_func = get_pool_map(n_cpu)
-        else:
-            from tqdm import tqdm
-
-            def map_func(f, iter):
-                return tqdm(map(f, iter), total=len(iter), disable=not self.verbose)
 
         if time is False:
             # (wd x ws) matrix
@@ -335,8 +326,11 @@ class WindFarmModel(ABC):
             else:  # pragma: no cover
                 raise ValueError(f'Shape, {s}, of argument {k} is invalid')
 
-        arg_lst = [{'wd': wd[wd_slice], 'ws': ws[ws_slice], 'time': get_subtask_arg('time', time, wd_slice, ws_slice),
-                    ** {k: get_subtask_arg(k, v, wd_slice, ws_slice) for k, v in kwargs.items()}} for wd_slice, ws_slice in slice_lst]
+        arg_lst = [{'wd': wd[wd_slice], 'ws': ws[ws_slice],
+                    'time': get_subtask_arg('time', time, wd_slice, ws_slice),
+                    **{k: get_subtask_arg(k, v, wd_slice, ws_slice) for k, v in kwargs.items()}} for wd_slice, ws_slice in slice_lst]
+
+        map_func = get_map_func(n_cpu, verbose=self.verbose)
 
         return map_func, arg_lst, wd_chunks, ws_chunks
 

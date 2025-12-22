@@ -1,23 +1,38 @@
-from abc import abstractmethod
-from numpy import newaxis as na
-from py_wake import np
-from py_wake.superposition_models import SuperpositionModel, LinearSum, WeightedSum, CumulativeWakeSum, SquaredSum
-from py_wake.wind_farm_models.wind_farm_model import WindFarmModel
-from py_wake.deflection_models.deflection_model import DeflectionModel
-from py_wake.utils.gradients import cabs, item_assign
-from py_wake.rotor_avg_models.rotor_avg_model import RotorAvgModel, NodeRotorAvgModel, WSPowerRotorAvg
-from py_wake.turbulence_models.turbulence_model import TurbulenceModel
-from py_wake.deficit_models.deficit_model import ConvectionDeficitModel, BlockageDeficitModel, WakeDeficitModel
-from tqdm import tqdm
-from py_wake.wind_turbines._wind_turbines import WindTurbines
-from py_wake.utils.model_utils import check_model, fix_shape
-from py_wake.utils import gradients
 import warnings
-from py_wake.input_modifier_models.input_modifier_model import InputModifierModel
+from abc import abstractmethod
+
+from numpy import newaxis as na
+from tqdm import tqdm
+
+from py_wake import np
+from py_wake.deficit_models.deficit_model import (
+    BlockageDeficitModel,
+    ConvectionDeficitModel,
+    WakeDeficitModel,
+)
 from py_wake.deficit_models.no_wake import NoWakeDeficit
-from py_wake.utils.parallelization import get_starmap_func
-import multiprocessing
+from py_wake.deflection_models.deflection_model import DeflectionModel
+from py_wake.input_modifier_models.input_modifier_model import InputModifierModel
+from py_wake.rotor_avg_models.rotor_avg_model import (
+    NodeRotorAvgModel,
+    RotorAvgModel,
+    WSPowerRotorAvg,
+)
+from py_wake.superposition_models import (
+    CumulativeWakeSum,
+    LinearSum,
+    SquaredSum,
+    SuperpositionModel,
+    WeightedSum,
+)
+from py_wake.turbulence_models.turbulence_model import TurbulenceModel
+from py_wake.utils import gradients
+from py_wake.utils.gradients import cabs, item_assign
+from py_wake.utils.model_utils import check_model, fix_shape
+from py_wake.utils.parallelization import get_map_func
 from py_wake.wind_farm_models.external_wind_farm_models import ExternalWindFarm
+from py_wake.wind_farm_models.wind_farm_model import WindFarmModel
+from py_wake.wind_turbines._wind_turbines import WindTurbines
 
 
 class EngineeringWindFarmModel(WindFarmModel):
@@ -422,7 +437,6 @@ class EngineeringWindFarmModel(WindFarmModel):
         if I == 0:
             return (lw_j, np.broadcast_to(lw_j.WS_ilk, (len(x_jl), L, K)).astype(float),
                     np.broadcast_to(lw_j.TI_ilk, (len(x_jl), L, K)).astype(float))
-        n_cpu = n_cpu or multiprocessing.cpu_count()
         # *6=dx_ijlk, dy_ijlk, dz_ijlk, dh_ijlk, deficit, blockage
         size_GB = I * J * L * K * np.array([]).itemsize * 6 * n_cpu / 1024**3
         min_wd_chunks = np.minimum(n_cpu, L)
@@ -431,8 +445,8 @@ class EngineeringWindFarmModel(WindFarmModel):
         j_chunks = int(np.clip(np.ceil(size_GB / wd_chunks / memory_GB), min_j_chunks, J))
 
         verbose = verbose or self.verbose
-        map_func = get_starmap_func(n_cpu=n_cpu, verbose=wd_chunks + j_chunks > 2 and verbose, desc='Calculate flow map',
-                                    unit='wd', leave=0)
+        map_func = get_map_func(n_cpu=n_cpu, starmap=True, verbose=wd_chunks + j_chunks > 2 and verbose,
+                                desc='Calculate flow map', unit='chunk', leave=0)
         wt_x_ilk, wt_y_ilk, wt_h_ilk = [sim_res_data[k].ilk() for k in ['x', 'y', 'h']]
 
         def get_jl_args(j, l):
@@ -1156,12 +1170,13 @@ class All2All(All2AllIterative):
 
 def main():
     if __name__ == '__main__':
-        from py_wake.examples.data.iea37 import IEA37Site, IEA37_WindTurbines
-        from py_wake.deficit_models.selfsimilarity import SelfSimilarityDeficit
-        from py_wake.deficit_models.gaussian import ZongGaussianDeficit
-        from py_wake.turbulence_models.stf import STF2017TurbulenceModel
-        from py_wake.flow_map import XYGrid
         import matplotlib.pyplot as plt
+
+        from py_wake.deficit_models.gaussian import ZongGaussianDeficit
+        from py_wake.deficit_models.selfsimilarity import SelfSimilarityDeficit
+        from py_wake.examples.data.iea37 import IEA37_WindTurbines, IEA37Site
+        from py_wake.flow_map import XYGrid
+        from py_wake.turbulence_models.stf import STF2017TurbulenceModel
 
         site = IEA37Site(16)
         x, y = site.initial_position.T

@@ -23,7 +23,22 @@ test_PyWake:  # name the job what we like
     - if: $CI_COMMIT_BRANCH == "master"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
-
+# ===== TEST PyWake MPI =====
+test_PyWake_MPI:  # name the job what we like
+  stage:  # build, test, deploy defined by default [2]
+    test
+  script:
+  - pip install --upgrade pip
+  - pip install -e . --timeout 100 --resume-retries 3
+  - pip install mpi4py openmpi
+  - python -V
+  - pip list
+  - mpirun --allow-run-as-root -np 2 python py_wake/tests/test_utils/test_mpi.py
+  tags:  # only runners with this tag can do the job [3]
+  - ci-ubuntu
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 # ===== Check code style =====
 check_code_style:  # name the job what we like
