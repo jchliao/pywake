@@ -4,9 +4,11 @@ import multiprocessing
 import platform
 from itertools import starmap
 
-try:
+try:  # pragma: no cover
     from mpi4py import MPI
-except ImportError:
+    comm = MPI.COMM_WORLD
+    assert comm.Get_size() > 1
+except (ImportError, AssertionError):
     MPI = None
 
 pool_dict = {}
