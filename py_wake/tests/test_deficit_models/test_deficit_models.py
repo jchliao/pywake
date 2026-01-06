@@ -638,7 +638,7 @@ def test_type_il(wfm_cls):
     wfm = wfm_cls(UniformSite(), wts, MyWakeModel(rotorAvgModel=None))
     sim_res = wfm([0, .1, .2], [0, 200, 400], wd=[270, 90], ws=10, type=[0, 1, 2])
     fm = sim_res.flow_map(Points(x=[200, 200, 200], y=[0, 200, 400], h=[110, 110, 110]), wd=sim_res.wd, ws=sim_res.ws)
-    npt.assert_allclose(fm.WS_eff[:, 1], [3.4, 6.1, 7.5], atol=.1)
+    npt.assert_allclose(fm.WS_eff[:, 0], [3.4, 6.1, 7.5], atol=.1)
     if 0:
         axes = plt.subplots(2, 1)[1]
         sim_res.flow_map(wd=270).plot_wake_map(ax=axes[0])
